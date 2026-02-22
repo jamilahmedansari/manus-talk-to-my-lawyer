@@ -1,9 +1,12 @@
 /**
- * Two-stage AI pipeline:
- * Stage 1: Legal research via OpenAI (with web search prompt)
- * Stage 2: Letter drafting via OpenAI based on validated research packet
+ * Three-stage AI pipeline for legal letter generation:
  *
- * Includes deterministic validators before each stage transition.
+ * Stage 1: PERPLEXITY (sonar) — Legal research with web-grounded citations
+ * Stage 2: OPENAI (gpt-4o) — Initial draft generation from research packet
+ * Stage 3: CLAUDE (claude-sonnet-4-20250514) — Final professional letter assembly
+ *
+ * Each stage has deterministic validators before transitioning.
+ * All stages log to workflow_jobs and research_runs for audit trail.
  */
 
 import { createOpenAI } from "@ai-sdk/openai";
@@ -22,13 +25,28 @@ import {
 } from "./db";
 import type { IntakeJson, ResearchPacket, DraftOutput } from "../shared/types";
 
+// ═══════════════════════════════════════════════════════
+// MODEL PROVIDERS
+// ═══════════════════════════════════════════════════════
+
+/** Stage 1: Perplexity for web-grounded legal research */
+const perplexity = createOpenAI({
+  apiKey: process.env.PERPLEXITY_API_KEY ?? "",
+  baseURL: "https://api.perplexity.ai",
+  name: "perplexity",
+});
+const RESEARCH_MODEL = perplexity.chat("sonar-pro");
+
+/** Stage 2: OpenAI for initial draft generation (via Forge proxy) */
 const openai = createOpenAI({
   apiKey: process.env.BUILT_IN_FORGE_API_KEY,
   baseURL: `${process.env.BUILT_IN_FORGE_API_URL}/v1`,
   fetch: createPatchedFetch(fetch),
 });
+const DRAFT_MODEL = openai.chat("gpt-4o");
 
-const MODEL = openai.chat("gemini-2.5-flash");
+/** Stage 3: Claude for final professional letter assembly (via Forge proxy) */
+const ASSEMBLY_MODEL = openai.chat("claude-sonnet-4-20250514");
 
 // ═══════════════════════════════════════════════════════
 // DETERMINISTIC VALIDATORS
@@ -62,11 +80,9 @@ export function validateResearchPacket(data: unknown): { valid: boolean; errors:
 
 export function parseAndValidateDraftLlmOutput(raw: string): { valid: boolean; data?: DraftOutput; errors: string[] } {
   const errors: string[] = [];
-  // Try to extract JSON from markdown code blocks or raw JSON
   let jsonStr = raw.trim();
   const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (jsonMatch) jsonStr = jsonMatch[1].trim();
-  // Try to find JSON object
   const objMatch = jsonStr.match(/\{[\s\S]*\}/);
   if (objMatch) jsonStr = objMatch[0];
 
@@ -103,15 +119,25 @@ export function parseAndValidateDraftLlmOutput(raw: string): { valid: boolean; d
   return { valid: true, data: parsed as DraftOutput, errors: [] };
 }
 
+export function validateFinalLetter(text: string): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!text || text.length < 200) errors.push("Final letter must be at least 200 characters");
+  if (!text.includes("Dear") && !text.includes("To Whom") && !text.includes("RE:") && !text.includes("Re:"))
+    errors.push("Final letter should contain a proper salutation or subject line");
+  if (!text.includes("Sincerely") && !text.includes("Respectfully") && !text.includes("Very truly yours") && !text.includes("Regards"))
+    errors.push("Final letter should contain a proper closing");
+  return { valid: errors.length === 0, errors };
+}
+
 // ═══════════════════════════════════════════════════════
-// STAGE 1: LEGAL RESEARCH
+// STAGE 1: PERPLEXITY LEGAL RESEARCH
 // ═══════════════════════════════════════════════════════
 
 export async function runResearchStage(letterId: number, intake: IntakeJson): Promise<ResearchPacket> {
   const job = await createWorkflowJob({
     letterRequestId: letterId,
     jobType: "research",
-    provider: "openai",
+    provider: "perplexity",
     requestPayloadJson: { letterId, letterType: intake.letterType, jurisdiction: intake.jurisdiction },
   });
   const jobId = (job as any)?.insertId ?? 0;
@@ -119,7 +145,7 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
   const researchRun = await createResearchRun({
     letterRequestId: letterId,
     workflowJobId: jobId,
-    provider: "openai",
+    provider: "perplexity",
   });
   const runId = (researchRun as any)?.insertId ?? 0;
 
@@ -130,7 +156,8 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
   const prompt = buildResearchPrompt(intake);
 
   try {
-    const { text } = await generateText({ model: MODEL, prompt, maxOutputTokens: 4000 });
+    console.log(`[Pipeline] Stage 1: Perplexity research for letter #${letterId}`);
+    const { text } = await generateText({ model: RESEARCH_MODEL, prompt, maxOutputTokens: 4000 });
 
     // Parse research packet from response
     let researchPacket: ResearchPacket;
@@ -141,7 +168,7 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
     } catch {
       // Build a structured packet from the text response
       researchPacket = {
-        researchSummary: text.substring(0, 500),
+        researchSummary: text.substring(0, 2000),
         jurisdictionProfile: {
           country: intake.jurisdiction.country,
           stateProvince: intake.jurisdiction.state,
@@ -149,7 +176,18 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
           authorityHierarchy: ["Federal", "State", "Local"],
         },
         issuesIdentified: [intake.matter.description.substring(0, 200)],
-        applicableRules: [],
+        applicableRules: [{
+          ruleTitle: "General Legal Framework",
+          ruleType: "statute",
+          jurisdiction: intake.jurisdiction.state,
+          citationText: "See research summary",
+          sectionOrRule: "N/A",
+          summary: text.substring(0, 300),
+          sourceUrl: "",
+          sourceTitle: "Perplexity Research",
+          relevance: "Primary research findings",
+          confidence: "medium" as const,
+        }],
         localJurisdictionElements: [],
         factualDataNeeded: [],
         openQuestions: [],
@@ -182,9 +220,11 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
     });
     await updateWorkflowJob(jobId, { status: "completed", completedAt: new Date(), responsePayloadJson: { researchRunId: runId } });
 
+    console.log(`[Pipeline] Stage 1 complete for letter #${letterId}`);
     return researchPacket;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Pipeline] Stage 1 failed for letter #${letterId}:`, msg);
     await updateResearchRun(runId, { status: "failed", errorMessage: msg });
     await updateWorkflowJob(jobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     throw err;
@@ -192,7 +232,7 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
 }
 
 // ═══════════════════════════════════════════════════════
-// STAGE 2: LETTER DRAFTING
+// STAGE 2: OPENAI DRAFT GENERATION
 // ═══════════════════════════════════════════════════════
 
 export async function runDraftingStage(letterId: number, intake: IntakeJson, research: ResearchPacket): Promise<DraftOutput> {
@@ -210,7 +250,8 @@ export async function runDraftingStage(letterId: number, intake: IntakeJson, res
   const prompt = buildDraftingPrompt(intake, research);
 
   try {
-    const { text } = await generateText({ model: MODEL, prompt, maxOutputTokens: 6000 });
+    console.log(`[Pipeline] Stage 2: OpenAI drafting for letter #${letterId}`);
+    const { text } = await generateText({ model: DRAFT_MODEL, prompt, maxOutputTokens: 6000 });
 
     const validation = parseAndValidateDraftLlmOutput(text);
     if (!validation.valid || !validation.data) {
@@ -231,6 +272,8 @@ export async function runDraftingStage(letterId: number, intake: IntakeJson, res
       content: draft.draftLetter,
       createdByType: "system",
       metadataJson: {
+        provider: "openai",
+        stage: "draft_generation",
         attorneyReviewSummary: draft.attorneyReviewSummary,
         openQuestions: draft.openQuestions,
         riskFlags: draft.riskFlags,
@@ -240,20 +283,89 @@ export async function runDraftingStage(letterId: number, intake: IntakeJson, res
 
     await updateLetterVersionPointers(letterId, { currentAiDraftVersionId: versionId });
     await updateWorkflowJob(jobId, { status: "completed", completedAt: new Date(), responsePayloadJson: { versionId } });
+
+    console.log(`[Pipeline] Stage 2 complete for letter #${letterId}`);
+    return draft;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Pipeline] Stage 2 failed for letter #${letterId}:`, msg);
+    await updateWorkflowJob(jobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
+    throw err;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// STAGE 3: CLAUDE FINAL LETTER ASSEMBLY
+// ═══════════════════════════════════════════════════════
+
+export async function runAssemblyStage(
+  letterId: number,
+  intake: IntakeJson,
+  research: ResearchPacket,
+  draft: DraftOutput
+): Promise<string> {
+  const job = await createWorkflowJob({
+    letterRequestId: letterId,
+    jobType: "draft_generation", // reuse type, differentiated by provider
+    provider: "anthropic",
+    requestPayloadJson: { letterId, stage: "final_assembly" },
+  });
+  const jobId = (job as any)?.insertId ?? 0;
+
+  await updateWorkflowJob(jobId, { status: "running", startedAt: new Date() });
+
+  const prompt = buildAssemblyPrompt(intake, research, draft);
+
+  try {
+    console.log(`[Pipeline] Stage 3: Claude final assembly for letter #${letterId}`);
+    const { text: finalLetter } = await generateText({ model: ASSEMBLY_MODEL, prompt, maxOutputTokens: 8000 });
+
+    // Validate the final letter
+    const validation = validateFinalLetter(finalLetter);
+    if (!validation.valid) {
+      console.warn(`[Pipeline] Stage 3 validation warnings for letter #${letterId}:`, validation.errors);
+      // Non-fatal: still store it but log the warnings
+    }
+
+    // Store the assembled letter as a new AI draft version (replaces the Stage 2 draft)
+    const version = await createLetterVersion({
+      letterRequestId: letterId,
+      versionType: "ai_draft",
+      content: finalLetter,
+      createdByType: "system",
+      metadataJson: {
+        provider: "anthropic",
+        stage: "final_assembly",
+        assembledFrom: {
+          researchProvider: "perplexity",
+          draftProvider: "openai",
+        },
+        validationWarnings: validation.errors.length > 0 ? validation.errors : undefined,
+      },
+    });
+    const versionId = (version as any)?.insertId ?? 0;
+
+    // Update the AI draft pointer to the final assembled version
+    await updateLetterVersionPointers(letterId, { currentAiDraftVersionId: versionId });
+    await updateWorkflowJob(jobId, { status: "completed", completedAt: new Date(), responsePayloadJson: { versionId } });
+
+    // Transition to pending_review
     await updateLetterStatus(letterId, "pending_review");
 
     await logReviewAction({
       letterRequestId: letterId,
       actorType: "system",
-      action: "ai_draft_completed",
-      noteText: `AI draft generated. Review summary: ${draft.attorneyReviewSummary}`,
+      action: "ai_pipeline_completed",
+      noteText: `3-stage pipeline complete. Research (Perplexity) → Draft (OpenAI) → Final Assembly (Claude). Letter is ready for attorney review.`,
       fromStatus: "drafting",
       toStatus: "pending_review",
     });
 
-    return draft;
+    console.log(`[Pipeline] Stage 3 complete for letter #${letterId} — now pending_review`);
+    return finalLetter;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Pipeline] Stage 3 failed for letter #${letterId}:`, msg);
     await updateWorkflowJob(jobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     throw err;
   }
@@ -267,20 +379,27 @@ export async function runFullPipeline(letterId: number, intake: IntakeJson): Pro
   const pipelineJob = await createWorkflowJob({
     letterRequestId: letterId,
     jobType: "generation_pipeline",
-    provider: "openai",
-    requestPayloadJson: { letterId },
+    provider: "multi-provider",
+    requestPayloadJson: { letterId, stages: ["perplexity-research", "openai-draft", "claude-assembly"] },
   });
   const pipelineJobId = (pipelineJob as any)?.insertId ?? 0;
   await updateWorkflowJob(pipelineJobId, { status: "running", startedAt: new Date() });
 
   try {
-    // Stage 1: Research
+    // Stage 1: Perplexity Research
     const research = await runResearchStage(letterId, intake);
-    // Stage 2: Draft
-    await runDraftingStage(letterId, intake, research);
+
+    // Stage 2: OpenAI Draft
+    const draft = await runDraftingStage(letterId, intake, research);
+
+    // Stage 3: Claude Final Assembly
+    await runAssemblyStage(letterId, intake, research, draft);
+
     await updateWorkflowJob(pipelineJobId, { status: "completed", completedAt: new Date() });
+    console.log(`[Pipeline] Full 3-stage pipeline completed for letter #${letterId}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Pipeline] Full pipeline failed for letter #${letterId}:`, msg);
     await updateWorkflowJob(pipelineJobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     await updateLetterStatus(letterId, "submitted"); // revert to allow retry
     throw err;
@@ -299,7 +418,7 @@ export async function retryPipelineFromStage(
   const retryJob = await createWorkflowJob({
     letterRequestId: letterId,
     jobType: "retry",
-    provider: "openai",
+    provider: "multi-provider",
     requestPayloadJson: { letterId, stage },
   });
   const retryJobId = (retryJob as any)?.insertId ?? 0;
@@ -307,12 +426,17 @@ export async function retryPipelineFromStage(
 
   try {
     if (stage === "research") {
+      // Full re-run from research
       const research = await runResearchStage(letterId, intake);
-      await runDraftingStage(letterId, intake, research);
+      const draft = await runDraftingStage(letterId, intake, research);
+      await runAssemblyStage(letterId, intake, research, draft);
     } else {
+      // Re-run from drafting using existing research
       const latestResearch = await getLatestResearchRun(letterId);
       if (!latestResearch?.resultJson) throw new Error("No completed research run found for retry");
-      await runDraftingStage(letterId, intake, latestResearch.resultJson as ResearchPacket);
+      const research = latestResearch.resultJson as ResearchPacket;
+      const draft = await runDraftingStage(letterId, intake, research);
+      await runAssemblyStage(letterId, intake, research, draft);
     }
     await updateWorkflowJob(retryJobId, { status: "completed", completedAt: new Date() });
   } catch (err) {
@@ -327,20 +451,23 @@ export async function retryPipelineFromStage(
 // ═══════════════════════════════════════════════════════
 
 function buildResearchPrompt(intake: IntakeJson): string {
-  return `You are a senior legal research specialist. Research the applicable laws, statutes, and regulations for the following legal matter and produce a structured JSON research packet.
+  return `You are a senior legal research specialist with expertise in US law. Conduct thorough research on the applicable laws, statutes, regulations, and case law for the following legal matter. Use web sources to find current, accurate legal information.
 
 ## Legal Matter
 - Type: ${intake.letterType}
 - Subject: ${intake.matter.subject}
 - Description: ${intake.matter.description}
 - Jurisdiction: ${intake.jurisdiction.state}, ${intake.jurisdiction.country}
+- City: ${intake.jurisdiction.city ?? "Not specified"}
 - Desired Outcome: ${intake.desiredOutcome}
+${intake.financials?.amountOwed ? `- Amount in Dispute: $${intake.financials.amountOwed} ${intake.financials.currency ?? "USD"}` : ""}
+${intake.additionalContext ? `- Additional Context: ${intake.additionalContext}` : ""}
 
 ## Required Output Format
 Return ONLY a valid JSON object with this exact structure:
 \`\`\`json
 {
-  "researchSummary": "2-3 paragraph summary of the legal landscape",
+  "researchSummary": "2-3 paragraph summary of the legal landscape and key findings",
   "jurisdictionProfile": {
     "country": "${intake.jurisdiction.country}",
     "stateProvince": "${intake.jurisdiction.state}",
@@ -353,12 +480,12 @@ Return ONLY a valid JSON object with this exact structure:
       "ruleTitle": "Rule name",
       "ruleType": "statute|regulation|case_law|common_law",
       "jurisdiction": "${intake.jurisdiction.state}",
-      "citationText": "Citation",
+      "citationText": "Full legal citation",
       "sectionOrRule": "Section number",
-      "summary": "Plain English summary",
-      "sourceUrl": "URL if known",
+      "summary": "Plain English summary of the rule",
+      "sourceUrl": "URL to the source",
       "sourceTitle": "Source name",
-      "relevance": "Why this applies",
+      "relevance": "Why this applies to this case",
       "confidence": "high|medium|low"
     }
   ],
@@ -375,11 +502,13 @@ Return ONLY a valid JSON object with this exact structure:
   "riskFlags": ["Potential legal risks or complications"],
   "draftingConstraints": ["Specific requirements for the letter draft"]
 }
-\`\`\``;
+\`\`\`
+
+Focus on finding REAL statutes, regulations, and case law with accurate citations. Be thorough and specific to the jurisdiction.`;
 }
 
 function buildDraftingPrompt(intake: IntakeJson, research: ResearchPacket): string {
-  return `You are a senior attorney drafting a professional legal letter. Use the research packet below to draft a legally sound, persuasive letter.
+  return `You are a senior attorney drafting a legal letter. Use the research packet below to create a legally sound, persuasive draft.
 
 ## Intake Information
 - Letter Type: ${intake.letterType}
@@ -390,8 +519,9 @@ function buildDraftingPrompt(intake: IntakeJson, research: ResearchPacket): stri
 - Desired Outcome: ${intake.desiredOutcome}
 - Deadline: ${intake.deadlineDate ?? "Not specified"}
 - Tone: ${intake.tonePreference ?? "firm"}
+${intake.financials?.amountOwed ? `- Amount: $${intake.financials.amountOwed} ${intake.financials.currency ?? "USD"}` : ""}
 
-## Research Packet
+## Research Packet (from Perplexity)
 ${JSON.stringify(research, null, 2)}
 
 ## Required Output Format
@@ -410,5 +540,63 @@ The letter must:
 2. State the legal basis for the claim clearly
 3. Make a specific demand with a deadline
 4. Include appropriate legal language for a ${intake.letterType}
-5. Be professionally formatted`;
+5. Be professionally formatted with proper legal letter structure`;
+}
+
+function buildAssemblyPrompt(intake: IntakeJson, research: ResearchPacket, draft: DraftOutput): string {
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  return `You are a senior partner at a prestigious law firm. Your task is to take the research findings and initial draft below, and produce a FINAL, polished, professional legal letter ready for attorney review and client delivery.
+
+## Context
+This is a ${intake.letterType.replace(/-/g, " ")} being sent from ${intake.sender.name} to ${intake.recipient.name}.
+
+## Research Findings (from Perplexity AI)
+Key statutes and rules identified:
+${research.applicableRules.map((r) => `- ${r.ruleTitle}: ${r.summary} (${r.citationText})`).join("\n")}
+
+Research Summary: ${research.researchSummary}
+
+Risk Flags: ${research.riskFlags.join("; ") || "None identified"}
+Drafting Constraints: ${research.draftingConstraints.join("; ") || "Standard legal letter format"}
+
+## Initial Draft (from OpenAI)
+${draft.draftLetter}
+
+## Attorney Review Notes from Draft Stage
+${draft.attorneyReviewSummary}
+
+Open Questions: ${draft.openQuestions.join("; ") || "None"}
+Risk Flags: ${draft.riskFlags.join("; ") || "None"}
+
+## Your Task
+Produce the FINAL professional legal letter. This must be a complete, ready-to-send letter with:
+
+1. **Proper letterhead format**: Date (${today}), sender's full address, recipient's full address
+2. **RE: line** with the subject matter
+3. **Professional salutation** ("Dear Mr./Ms./To Whom It May Concern")
+4. **Opening paragraph**: State the purpose and legal basis
+5. **Body paragraphs**: Present facts, cite specific laws/statutes from the research, make the legal argument
+6. **Demand paragraph**: Clearly state what is demanded and by when
+7. **Consequences paragraph**: State what will happen if demands are not met
+8. **Professional closing**: "Sincerely," or "Very truly yours," with signature block
+
+## Formatting Requirements
+- Use proper legal letter formatting
+- Include ALL relevant legal citations from the research
+- Tone: ${intake.tonePreference ?? "firm"} but professional
+- The letter should be complete and ready to print on letterhead
+- Do NOT wrap the output in JSON or code blocks — output ONLY the letter text
+
+## Sender Information
+${intake.sender.name}
+${intake.sender.address}
+${intake.sender.email ? `Email: ${intake.sender.email}` : ""}
+${intake.sender.phone ? `Phone: ${intake.sender.phone}` : ""}
+
+## Recipient Information
+${intake.recipient.name}
+${intake.recipient.address}
+
+OUTPUT ONLY THE FINAL LETTER TEXT. No JSON wrapping, no markdown code blocks, no commentary.`;
 }

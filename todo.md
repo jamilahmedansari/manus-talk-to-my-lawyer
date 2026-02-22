@@ -64,3 +64,22 @@
 - [ ] n8n workflow integration for letter generation
 - [ ] Stripe payment integration for subscriptions
 - [ ] Mobile PWA optimization
+
+## Phase 8: E2E Workflow Audit & Fix
+- [x] Audit intake form fields → pipeline input mapping
+- [x] Add 3rd AI stage: Claude/Anthropic final letter assembly (combines research + draft into professional letter)
+- [x] Ensure pipeline status transitions fire correctly: submitted → researching → drafting → pending_review
+- [x] Ensure review center claim/approve/reject correctly updates status and creates final version
+- [x] Ensure approved letter appears in subscriber My Letters with full content
+- [x] Ensure subscriber detail page shows final approved letter (not AI drafts/research)
+
+## Phase 9: Stripe Payment Integration
+- [ ] Add Stripe feature via webdev_add_feature
+- [ ] Subscription plans: per-letter ($299), monthly ($200/mo unlimited), annual ($2000/yr 48 letters)
+- [ ] Checkout session creation with metadata
+- [ ] Webhook handler for checkout.session.completed
+- [ ] Atomic subscription activation (prevent race conditions)
+- [ ] Commission tracking (5% employee referral)
+- [ ] Employee coupon system (20% discount on per-letter)
+- [ ] Pricing page UI
+- [ ] Credit/letter allowance enforcement before letter submission
