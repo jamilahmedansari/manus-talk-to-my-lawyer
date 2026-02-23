@@ -43,15 +43,15 @@ The spec requires 7 minimum indexes:
 
 | Index | Status |
 |---|---|
-| `letter_requests(status)` | ❌ Missing — no indexes defined in schema or migrations |
-| `letter_requests(user_id)` | ❌ Missing |
-| `letter_requests(assigned_reviewer_id)` | ❌ Missing |
-| `letter_versions(letter_request_id)` | ❌ Missing |
-| `review_actions(letter_request_id)` | ❌ Missing |
-| `workflow_jobs(letter_request_id, status)` | ❌ Missing |
-| `research_runs(letter_request_id, status)` | ❌ Missing |
+| `letter_requests(status)` | ✅ `idx_letter_requests_status` |
+| `letter_requests(user_id)` | ✅ `idx_letter_requests_userId` |
+| `letter_requests(assigned_reviewer_id)` | ✅ `idx_letter_requests_assignedReviewerId` |
+| `letter_versions(letter_request_id)` | ✅ `idx_letter_versions_letterRequestId` |
+| `review_actions(letter_request_id)` | ✅ `idx_review_actions_letterRequestId` |
+| `workflow_jobs(letter_request_id, status)` | ✅ `idx_workflow_jobs_letterRequestId_status` |
+| `research_runs(letter_request_id, status)` | ✅ `idx_research_runs_letterRequestId_status` |
 
-**All 7 required indexes are missing.** This is a performance risk at scale but not a functional blocker for MVP. Must be added before production traffic.
+**All 7 required indexes are present in the database.** Applied via migration `0004_previous_titania.sql` on 2026-02-23.
 
 ### Role Enum — Status
 
@@ -262,7 +262,7 @@ The following items are confirmed missing and should be implemented in the next 
 
 | Priority | Gap | Impact | Effort |
 |---|---|---|---|
-| **P1 — High** | 7 missing database indexes | Performance at scale | Low — one SQL migration |
+| ~~**P1 — High**~~ | ~~7 missing database indexes~~ | ~~Performance at scale~~ | ✅ Done — migration 0004 |
 | **P1 — High** | Attachment upload UI in SubmitLetter form | Subscribers cannot attach evidence | Medium |
 | **P2 — Medium** | `language` field in intake normalizer + form | Multi-language support | Low |
 | **P2 — Medium** | `deadlines` field in intake normalizer + form | Attorney needs deadline context | Low |

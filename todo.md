@@ -203,3 +203,10 @@
 - [ ] P3: Consider role rename: employee→attorney_admin, admin→super_admin (requires migration)
 - [ ] P3: Build Payment Receipts page at /subscriber/receipts
 - [ ] P3: Add subscriber Dashboard stats widget (total letters, locked, in review)
+
+## Phase 19: Database Indexes Migration
+- [x] Add 7 spec-required indexes to drizzle/schema.ts using Drizzle index() API
+- [x] Generate migration SQL via pnpm drizzle-kit generate (0004_previous_titania.sql)
+- [x] Apply migration via webdev_execute_sql
+- [x] Verify all 7 indexes exist in the database (confirmed via information_schema query)
+- [x] Update SPEC_COMPLIANCE.md to mark indexes as complete

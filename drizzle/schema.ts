@@ -8,6 +8,7 @@ import {
   json,
   bigint,
   boolean,
+  index,
 } from "drizzle-orm/mysql-core";
 
 // ─── User Roles ───
@@ -122,7 +123,12 @@ export const letterRequests = mysqlTable("letter_requests", {
   lastStatusChangedAt: timestamp("lastStatusChangedAt").defaultNow(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  // Performance indexes required by spec
+  statusIdx: index("idx_letter_requests_status").on(t.status),
+  userIdIdx: index("idx_letter_requests_user_id").on(t.userId),
+  assignedReviewerIdx: index("idx_letter_requests_assigned_reviewer").on(t.assignedReviewerId),
+}));
 
 export type LetterRequest = typeof letterRequests.$inferSelect;
 export type InsertLetterRequest = typeof letterRequests.$inferInsert;
@@ -139,7 +145,9 @@ export const letterVersions = mysqlTable("letter_versions", {
   createdByUserId: int("createdByUserId"),
   metadataJson: json("metadataJson"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  letterRequestIdIdx: index("idx_letter_versions_letter_request_id").on(t.letterRequestId),
+}));
 
 export type LetterVersion = typeof letterVersions.$inferSelect;
 export type InsertLetterVersion = typeof letterVersions.$inferInsert;
@@ -158,7 +166,9 @@ export const reviewActions = mysqlTable("review_actions", {
   fromStatus: varchar("fromStatus", { length: 50 }),
   toStatus: varchar("toStatus", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  letterRequestIdIdx: index("idx_review_actions_letter_request_id").on(t.letterRequestId),
+}));
 
 export type ReviewAction = typeof reviewActions.$inferSelect;
 export type InsertReviewAction = typeof reviewActions.$inferInsert;
@@ -180,7 +190,9 @@ export const workflowJobs = mysqlTable("workflow_jobs", {
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  letterRequestStatusIdx: index("idx_workflow_jobs_letter_request_status").on(t.letterRequestId, t.status),
+}));
 
 export type WorkflowJob = typeof workflowJobs.$inferSelect;
 export type InsertWorkflowJob = typeof workflowJobs.$inferInsert;
@@ -200,7 +212,9 @@ export const researchRuns = mysqlTable("research_runs", {
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  letterRequestStatusIdx: index("idx_research_runs_letter_request_status").on(t.letterRequestId, t.status),
+}));
 
 export type ResearchRun = typeof researchRuns.$inferSelect;
 export type InsertResearchRun = typeof researchRuns.$inferInsert;
