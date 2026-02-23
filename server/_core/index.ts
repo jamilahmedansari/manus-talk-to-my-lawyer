@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerChatRoutes } from "./chat";
 import { registerN8nCallbackRoute } from "../n8nCallback";
+import { registerEmailPreviewRoute } from "../emailPreview";
 import { stripeWebhookHandler } from "../stripeWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -44,6 +45,8 @@ async function startServer() {
   registerChatRoutes(app);
   // n8n pipeline callback endpoint
   registerN8nCallbackRoute(app);
+  // Dev-only email template preview (disabled in production)
+  registerEmailPreviewRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

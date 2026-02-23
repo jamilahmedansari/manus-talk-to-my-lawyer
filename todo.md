@@ -159,3 +159,47 @@
 - [x] Wire sendLetterReadyEmail into n8nCallback.ts completion (n8n pipeline path)
 - [x] Wire sendLetterUnlockedEmail into stripeWebhook.ts letter unlock handler
 - [x] Tests: 35/35 passing, 0 TypeScript errors
+
+## Phase 16: Dev Email Preview Endpoint
+- [ ] Build server/emailPreview.ts: dev-only Express route at GET /api/dev/email-preview
+- [ ] Index page: lists all available templates with links
+- [ ] Per-template rendering: ?type=submission|letter_ready|unlocked|approved|rejected|needs_changes|new_review|job_failed
+- [ ] Query param support: ?name=&subject=&letterId= for realistic preview data
+- [ ] Guard: only active in NODE_ENV !== production
+- [ ] Register route in server/_core/index.ts or server/index.ts
+- [ ] Verify all templates render correctly in browser
+- [ ] Add vitest test for route existence and guard
+
+## Phase 16: Dev Email Preview Endpoint
+- [x] Build server/emailPreview.ts: dev-only Express route at GET /api/dev/email-preview
+- [x] Index page: lists all 9 templates with HTML and plain-text preview links
+- [x] Per-template rendering: ?type=submission|letter_ready|unlocked|approved|rejected|needs_changes|new_review|job_failed|status_update
+- [x] Query param support: ?name=&subject=&letterId=&state=&letterType=&mode= for realistic preview data
+- [x] Guard: only active in NODE_ENV !== production (verified in tests)
+- [x] Dev toolbar overlay showing template name and subject line in browser
+- [x] Register route in server/_core/index.ts
+- [x] Vitest tests: route export, dev registration, production guard (3 new tests)
+- [x] Tests: 38/38 passing, 0 TypeScript errors
+
+## Phase 17: Spec Compliance Audit (pasted_content_7)
+- [x] Status machine: all required transitions implemented (submitted→researching→drafting→generated_locked→pending_review→under_review→approved/rejected/needs_changes, needs_changes→researching/drafting)
+- [x] forceStatusTransition admin mutation: implemented and wired to admin UI
+- [x] buildNormalizedPromptInput: implemented in server/intake-normalizer.ts
+- [x] validateResearchPacket: implemented in server/pipeline.ts with sourceUrl/sourceTitle enforcement
+- [x] updateForChanges subscriber mutation: implemented and re-triggers pipeline
+- [x] research_sources table: spec marks as optional for MVP — sources embedded in research_runs.resultJson (sourceUrl + sourceTitle per rule)
+- [x] All 8 required tables present: users, letter_requests, letter_versions, review_actions, attachments, notifications, workflow_jobs, research_runs
+- [x] Subscriber-safe detail endpoint: ai_draft/research/internal notes never returned to subscribers
+- [x] Role-based access: subscriberProcedure, employeeProcedure, adminProcedure guards in place
+
+## Phase 18: Spec Compliance Gaps (from SPEC_COMPLIANCE.md audit)
+- [ ] P1: Add 7 missing database indexes (letter_requests.status, user_id, assigned_reviewer_id; letter_versions.letter_request_id; review_actions.letter_request_id; workflow_jobs.letter_request_id+status; research_runs.letter_request_id+status)
+- [ ] P1: Add attachment upload UI to SubmitLetter form (step 6 — file upload with size validation)
+- [ ] P2: Add `language` field to intake normalizer and SubmitLetter form
+- [ ] P2: Add `deadlines` field to intake normalizer and SubmitLetter form
+- [ ] P2: Add `communications` field to intake normalizer and SubmitLetter form
+- [ ] P2: Normalize `toneAndDelivery` as proper intake object (not just tonePreference string)
+- [ ] P3: Add research_sources as a separate table (optional — sources currently embedded in resultJson)
+- [ ] P3: Consider role rename: employee→attorney_admin, admin→super_admin (requires migration)
+- [ ] P3: Build Payment Receipts page at /subscriber/receipts
+- [ ] P3: Add subscriber Dashboard stats widget (total letters, locked, in review)

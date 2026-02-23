@@ -340,3 +340,39 @@ describe("Email templates: structure and content", () => {
     await expect(unlockedResult).resolves.toBeUndefined();
   });
 });
+
+// ============================================================================
+// EMAIL PREVIEW ROUTE TESTS
+// ============================================================================
+describe("Email preview route: registerEmailPreviewRoute", () => {
+  it("is exported from emailPreview.ts", async () => {
+    const mod = await import("./emailPreview");
+    expect(typeof mod.registerEmailPreviewRoute).toBe("function");
+  });
+
+  it("does not throw when called with a mock Express app in non-production env", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    const mod = await import("./emailPreview");
+    const routes: { method: string; path: string }[] = [];
+    const mockApp = {
+      get: (path: string, _handler: unknown) => { routes.push({ method: "GET", path }); },
+    };
+    expect(() => mod.registerEmailPreviewRoute(mockApp as any)).not.toThrow();
+    expect(routes).toContainEqual({ method: "GET", path: "/api/dev/email-preview" });
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  it("does NOT register route in production environment", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    const mod = await import("./emailPreview");
+    const routes: { method: string; path: string }[] = [];
+    const mockApp = {
+      get: (path: string, _handler: unknown) => { routes.push({ method: "GET", path }); },
+    };
+    mod.registerEmailPreviewRoute(mockApp as any);
+    expect(routes).toHaveLength(0);
+    process.env.NODE_ENV = originalEnv;
+  });
+});
