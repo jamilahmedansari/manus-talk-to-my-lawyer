@@ -25,12 +25,27 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      // Helper with timeout + retry for cold-start resilience
+      const doLogin = async (attempt: number) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          const resp = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          return resp;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          if (attempt < 2) return doLogin(attempt + 1);
+          throw err;
+        }
+      };
 
+      const response = await doLogin(0);
       const data = await response.json();
 
       if (!response.ok) {
@@ -60,8 +75,10 @@ export default function Login() {
       else if (role === "attorney") navigate("/review");
       else if (role === "employee") navigate("/employee");
       else navigate("/dashboard");
-    } catch (err) {
-      const msg = "An unexpected error occurred. Please try again.";
+    } catch (err: any) {
+      const msg = err?.name === 'AbortError'
+        ? "Request timed out. Please try again — the server may be warming up."
+        : "An unexpected error occurred. Please try again.";
       setError(msg);
       toast.error(msg);
     } finally {

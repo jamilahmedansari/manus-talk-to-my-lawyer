@@ -42,12 +42,30 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name: name || undefined }),
-      });
+      // Helper to make signup request with timeout
+      const doSignup = async (attempt: number) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          const resp = await fetch("/api/auth/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, name: name || undefined }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          return resp;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          if (attempt < 2) {
+            // Retry once on timeout/network error
+            return doSignup(attempt + 1);
+          }
+          throw err;
+        }
+      };
 
+      const response = await doSignup(0);
       const data = await response.json();
 
       if (!response.ok) {
@@ -81,8 +99,12 @@ export default function Signup() {
 
       // New signups are always subscribers — go to subscriber dashboard
       navigate("/dashboard");
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        setError("Request timed out. Please try again — the server may be warming up.");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

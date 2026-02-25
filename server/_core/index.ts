@@ -12,6 +12,7 @@ import { stripeWebhookHandler } from "../stripeWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -74,6 +75,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Warm up DB connection on startup so first request doesn't timeout
+    getDb().then(() => console.log('[Startup] Database connection warmed up')).catch(() => {});
   });
 }
 

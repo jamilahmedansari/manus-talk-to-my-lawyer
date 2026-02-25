@@ -542,3 +542,8 @@
 - [ ] Replace logo in sidebar (AppLayout.tsx)
 - [ ] Replace favicon in index.html
 - [ ] Replace any other logo occurrences (meta tags, og:image)
+
+## Phase 43: Bug Fix - Signup Error
+- [x] Investigate signup "unexpected error" — caused by lazy DB init on first request
+- [x] Fix: Added DB warmup on server startup + retry/timeout on login & signup fetch
+- [x] Account for jamilahmansari@gmail.com was already created successfully in Supabase
