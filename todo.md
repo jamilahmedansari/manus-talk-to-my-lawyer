@@ -659,3 +659,32 @@
 - [x] `pnpm test` — 309/320 passing (11 pre-existing failures in Phase 37/38)
 - [x] `pnpm tsc --noEmit` — 0 TypeScript errors
 - [x] Status machine: no `ALLOWED_TRANSITIONS` regression (phase23 test updated + passing)
+
+## Phase 49: High-Quality Toast Notifications, Landing Page Copy & Imagery
+
+### Toast Notification Copy Audit & Upgrade
+- [x] Audit all toast.success/toast.error/toast.info/toast.warning calls across the codebase
+- [x] Rewrite all toast messages to be professional, concise, and action-oriented
+- [x] Ensure consistent tone: authoritative legal-tech brand voice
+- [x] Add descriptive subtitles where appropriate (toast description field)
+
+### Landing Page Copy Upgrade
+- [x] Rewrite hero headline and subheadline (reflect freemium + subscription model)
+- [x] Rewrite Features section copy (clear value propositions)
+- [x] Rewrite Pricing section copy (accurate plan descriptions)
+- [x] Rewrite FAQ section answers (professional, reassuring tone)
+- [x] Rewrite CTA buttons and microcopy throughout
+
+### Landing Page Imagery
+- [x] Generate or source hero section illustration/image
+- [x] Generate or source feature section icons/illustrations
+- [x] Ensure all images are high-quality, professional, and legally themed
+- [x] Upload images to S3 and replace local paths with CDN URLs
+
+## Phase 50: Breadcrumb Navigation for User Areas
+
+- [x] Create shadcn breadcrumb.tsx component (already present)
+- [x] Build route-aware AppBreadcrumb wrapper component with route-to-label mapping
+- [x] Integrate breadcrumbs into AppLayout (subscriber, admin, employee areas)
+- [x] Ensure breadcrumbs are responsive and hidden on mobile if needed
+- [x] Integrate Phase 49 landing page images into Home.tsx (hero, security, attorney review sections)

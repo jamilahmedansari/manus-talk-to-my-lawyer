@@ -30,6 +30,7 @@ import {
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import AppBreadcrumb from "./AppBreadcrumb";
 
 interface NavItem {
   label: string;
@@ -84,9 +85,11 @@ interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
   breadcrumb?: { label: string; href?: string }[];
+  /** Optional label for dynamic breadcrumb segments (e.g., "Letter #42") */
+  dynamicLabel?: string;
 }
 
-export default function AppLayout({ children, title, breadcrumb }: AppLayoutProps) {
+export default function AppLayout({ children, title, breadcrumb, dynamicLabel }: AppLayoutProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -96,8 +99,8 @@ export default function AppLayout({ children, title, breadcrumb }: AppLayoutProp
     { enabled: isAuthenticated, refetchInterval: 30000 }
   );
   const markAllRead = trpc.notifications.markAllRead.useMutation({
-    onSuccess: () => toast.success("All notifications marked as read"),
-    onError: () => toast.error("Failed to mark notifications as read"),
+    onSuccess: () => toast.success("Notifications cleared", { description: "All notifications have been marked as read." }),
+    onError: () => toast.error("Could not clear notifications", { description: "Please try again in a moment." }),
   });
   const unreadCount = notifications?.length ?? 0;
 
@@ -185,7 +188,7 @@ export default function AppLayout({ children, title, breadcrumb }: AppLayoutProp
       {/* Logout */}
       <div className="p-3 border-t border-sidebar-border">
         <button
-          onClick={() => { toast.info("Signing out..."); logout(); }}
+          onClick={() => { toast.info("Signing out", { description: "You are being securely logged out." }); logout(); }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent w-full transition-colors"
         >
           <LogOut className="w-4 h-4" />
@@ -230,24 +233,14 @@ export default function AppLayout({ children, title, breadcrumb }: AppLayoutProp
               <Menu className="w-5 h-5" />
             </button>
             {/* Breadcrumb */}
-            {breadcrumb && breadcrumb.length > 0 ? (
-              <nav className="flex items-center gap-1 text-sm">
-                {breadcrumb.map((crumb, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    {i > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
-                    {crumb.href ? (
-                      <Link href={crumb.href} className="text-muted-foreground hover:text-foreground transition-colors">
-                        {crumb.label}
-                      </Link>
-                    ) : (
-                      <span className="text-foreground font-medium">{crumb.label}</span>
-                    )}
-                  </span>
-                ))}
-              </nav>
-            ) : title ? (
-              <h1 className="text-sm font-semibold text-foreground">{title}</h1>
-            ) : null}
+            <AppBreadcrumb
+              role={user.role}
+              overrides={breadcrumb}
+              dynamicLabel={dynamicLabel}
+            />
+            {title && !breadcrumb && (
+              <h1 className="text-sm font-semibold text-foreground hidden">{title}</h1>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

@@ -58,12 +58,12 @@ export default function VerifyEmail() {
       const data = await res.json();
       if (res.ok) {
         setResendSent(true);
-        toast.success("Verification email sent", { description: data.message });
+        toast.success("Verification email sent", { description: data.message || "Check your inbox for the confirmation link." });
       } else {
-        toast.error(data.error || "Failed to resend verification email");
+        toast.error("Could not resend email", { description: data.error || "Please wait a moment and try again." });
       }
     } catch {
-        toast.error("Network error. Please try again.");
+        toast.error("Connection error", { description: "Please check your internet connection and try again." });
     } finally {
       setResendLoading(false);
     }

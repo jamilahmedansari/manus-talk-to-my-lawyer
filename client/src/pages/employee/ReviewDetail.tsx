@@ -62,28 +62,28 @@ export default function ReviewDetail() {
   const invalidate = () => utils.review.letterDetail.invalidate({ id: letterId });
 
   const claimMutation = trpc.review.claim.useMutation({
-    onSuccess: () => { toast.success("Letter claimed for review"); invalidate(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success("Letter claimed", { description: "You can now review and edit the draft." }); invalidate(); },
+    onError: (e) => toast.error("Could not claim letter", { description: e.message }),
   });
 
   const saveMutation = trpc.review.saveEdit.useMutation({
-    onSuccess: () => { toast.success("Draft saved"); setEditMode(false); invalidate(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success("Draft saved", { description: "Your edits have been preserved." }); setEditMode(false); invalidate(); },
+    onError: (e) => toast.error("Save failed", { description: e.message }),
   });
 
   const approveMutation = trpc.review.approve.useMutation({
-    onSuccess: () => { toast.success("Letter approved!"); setApproveDialog(false); invalidate(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success("Letter approved", { description: "The subscriber has been notified and can now download the final PDF." }); setApproveDialog(false); invalidate(); },
+    onError: (e) => toast.error("Approval failed", { description: e.message }),
   });
 
   const rejectMutation = trpc.review.reject.useMutation({
-    onSuccess: () => { toast.success("Letter rejected"); setRejectDialog(false); invalidate(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success("Letter rejected", { description: "The subscriber has been notified of the decision." }); setRejectDialog(false); invalidate(); },
+    onError: (e) => toast.error("Rejection failed", { description: e.message }),
   });
 
   const changesMutation = trpc.review.requestChanges.useMutation({
-    onSuccess: () => { toast.success("Changes requested"); setChangesDialog(false); invalidate(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success("Revision requested", { description: "The subscriber has been asked to provide additional information." }); setChangesDialog(false); invalidate(); },
+    onError: (e) => toast.error("Request failed", { description: e.message }),
   });
 
   if (isLoading) {

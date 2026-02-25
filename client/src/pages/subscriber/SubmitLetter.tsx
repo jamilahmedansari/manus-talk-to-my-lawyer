@@ -134,7 +134,7 @@ export default function SubmitLetter() {
         const parsed = JSON.parse(saved);
         if (parsed.form) setForm({ ...INITIAL, ...parsed.form });
         if (parsed.step) setStep(parsed.step);
-        toast.success("Draft restored!");
+        toast.success("Draft restored", { description: "Your previously saved progress has been loaded." });
       }
     } catch { /* ignore */ }
     setShowDraftBanner(false);
@@ -143,7 +143,7 @@ export default function SubmitLetter() {
   const discardDraft = () => {
     localStorage.removeItem(DRAFT_KEY);
     setShowDraftBanner(false);
-    toast.info("Draft discarded.");
+    toast.info("Draft discarded", { description: "Starting fresh with a blank form." });
   };
 
   // ── Save draft to localStorage on step/form change ──────────────────────
@@ -187,17 +187,17 @@ export default function SubmitLetter() {
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const arr = Array.from(files);
     if (pendingFiles.length + arr.length > 5) {
-      toast.error("Maximum 5 attachments allowed");
+      toast.error("Attachment limit reached", { description: "You can upload a maximum of 5 supporting documents." });
       return;
     }
     for (const file of arr) {
       const ext = "." + (file.name.split(".").pop() ?? "").toLowerCase();
       if (file.size > MAX_FILE_BYTES) {
-        toast.error(`${file.name}: exceeds ${MAX_FILE_MB} MB limit`);
+        toast.error("File too large", { description: `${file.name} exceeds the ${MAX_FILE_MB} MB limit. Please compress or split the file.` });
         continue;
       }
       if (!ALLOWED_EXTS.includes(ext)) {
-        toast.error(`${file.name}: unsupported file type`);
+        toast.error("Unsupported file type", { description: `${file.name} is not an accepted format. Please use PDF, DOCX, JPG, or PNG.` });
         continue;
       }
       try {
@@ -211,7 +211,7 @@ export default function SubmitLetter() {
           status: "ready",
         }]);
       } catch {
-        toast.error(`Failed to read ${file.name}`);
+        toast.error("Upload failed", { description: `Could not read ${file.name}. Please try again.` });
       }
     }
   }, [pendingFiles.length]);
@@ -270,11 +270,11 @@ export default function SubmitLetter() {
       }
       // Clear saved draft on successful submission
       localStorage.removeItem(DRAFT_KEY);
-      toast.success("Letter submitted! AI pipeline has started.");
+      toast.success("Letter submitted", { description: "The AI pipeline is generating your draft. This usually takes 1\u20132 minutes." });
       setPipelineLetterId(letterId);
       setShowPipeline(true);
     } catch (err: any) {
-      toast.error(err?.message ?? "Submission failed");
+      toast.error("Submission failed", { description: err?.message ?? "Please check your inputs and try again." });
     } finally {
       setIsSubmitting(false);
     }

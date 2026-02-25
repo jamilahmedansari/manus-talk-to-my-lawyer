@@ -22,10 +22,17 @@ import {
   HelpCircle,
   Menu,
   X,
+  Scale,
 } from "lucide-react";
 
 const LOGO_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031738932/OabHhALgbskSzGQq.png";
+const HERO_IMG =
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031738932/LHeNWpKDzWRwhFwy.png";
+const ATTORNEY_IMG =
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031738932/wTAWxOiXDYjhSjRZ.png";
+const SECURITY_IMG =
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031738932/AEuSMSBHmAViYbED.png";
 
 export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -156,15 +163,15 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-20 text-center w-full">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-white/70 border border-blue-200 rounded-full px-4 py-1.5 mb-8 text-sm text-blue-700 font-medium shadow-sm">
-            <span className="w-2 h-2 bg-blue-500 rounded-full inline-block"></span>
-            AI-Powered · Attorney-Reviewed · Guaranteed Quality
+            <span className="w-2 h-2 bg-green-500 rounded-full inline-block animate-pulse"></span>
+            Your First Letter Is Free — No Credit Card Required
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 mb-4 leading-tight tracking-tight">
-            Get professional{" "}
-            <span className="text-blue-500">Lawyer-Drafted</span>
+            Professional{" "}
+            <span className="text-blue-600">Legal Letters</span>
             <br />
-            letters for
+            drafted by AI, approved by attorneys
           </h1>
 
           {/* Letter type pills */}
@@ -189,9 +196,9 @@ export default function Home() {
             </span>
           </div>
 
-          <p className="text-slate-700 text-lg mb-10 font-medium">
-            Resolve conflicts quickly and affordably — only{" "}
-            <span className="text-blue-600 font-bold">$200 per letter.</span>
+          <p className="text-slate-700 text-lg mb-10 font-medium max-w-2xl mx-auto">
+            Describe your legal situation. Our AI researches applicable laws, drafts a professional letter, and a licensed attorney reviews every word before delivery.{" "}
+            <span className="text-blue-600 font-bold">Try your first letter free.</span>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-14">
@@ -200,8 +207,7 @@ export default function Home() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 text-base font-semibold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2"
               onClick={goToLogin}
             >
-              <Play className="w-4 h-4" fill="white" /> Create Your Letter{" "}
-              <Settings2 className="w-4 h-4" />
+              <Play className="w-4 h-4" fill="white" /> Start Your Free Letter
             </Button>
             <Button
               size="lg"
@@ -214,12 +220,26 @@ export default function Home() {
             </Button>
           </div>
 
+          {/* Hero illustration */}
+          <div className="mt-12 mb-8 flex justify-center">
+            <div className="relative max-w-2xl w-full">
+              <div className="absolute inset-0 bg-gradient-to-t from-indigo-50/80 to-transparent rounded-3xl" />
+              <img
+                src={HERO_IMG}
+                alt="AI-powered legal letter generation with attorney review"
+                className="w-full h-auto rounded-3xl shadow-2xl shadow-blue-200/50 border border-white/50"
+                loading="eager"
+              />
+            </div>
+          </div>
+
           {/* Trust badges */}
           <div className="flex flex-wrap justify-center gap-8 text-sm text-slate-600">
             {[
-              { icon: CheckCircle2, label: "PDF Download" },
-              { icon: CheckCircle2, label: "Up to 48 hours turnaround" },
-              { icon: CheckCircle2, label: "Attorney approved" },
+              { icon: CheckCircle2, label: "First letter free" },
+              { icon: CheckCircle2, label: "24–48 hour attorney turnaround" },
+              { icon: CheckCircle2, label: "Downloadable PDF" },
+              { icon: CheckCircle2, label: "Licensed attorney sign-off" },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2">
                 <item.icon className="w-4 h-4 text-green-500" />
@@ -235,10 +255,10 @@ export default function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-3">
-              How It Works
+              Three Steps to a Professional Legal Letter
             </h2>
             <p className="text-slate-500 text-lg">
-              Simple, fast, and professionally verified in 3 steps
+              From intake to attorney-approved PDF in as little as 24 hours
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
@@ -246,20 +266,20 @@ export default function Home() {
               {
                 step: "01",
                 icon: FileText,
-                title: "Submit Your Case",
-                desc: "Fill out our simple intake form with your legal matter details. Choose from 5 professional letter types tailored to your situation.",
+                title: "Describe Your Situation",
+                desc: "Complete a guided intake form with the facts of your case — parties involved, key dates, desired outcome, and supporting details. No legal expertise required.",
               },
               {
                 step: "02",
                 icon: Shield,
-                title: "AI Drafts Instantly",
-                desc: "Our advanced AI generates a professional, legally-sound letter tailored to your exact situation in seconds.",
+                title: "AI Researches & Drafts",
+                desc: "Our AI pipeline researches applicable statutes and case law for your jurisdiction, then generates a tailored legal letter grounded in real legal authority.",
               },
               {
                 step: "03",
                 icon: CheckCircle2,
-                title: "Attorney Approves",
-                desc: "A licensed attorney personally reviews, edits, and approves every letter before you receive it. Guaranteed quality.",
+                title: "Attorney Reviews & Approves",
+                desc: "A licensed attorney reads every draft, makes edits where needed, and signs off before delivery. No letter reaches you without human legal oversight.",
               },
             ].map((item) => (
               <div
@@ -289,10 +309,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-3">
-              Comprehensive Legal Tools
+              Built for Real Legal Situations
             </h2>
             <p className="text-slate-500 text-lg">
-              Everything you need to manage your legal matters
+              Every feature exists to get you a stronger letter, faster
             </p>
           </div>
 
@@ -302,11 +322,10 @@ export default function Home() {
                 <FileText className="w-6 h-6 text-blue-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">
-                Document Management
+                7 Letter Types
               </h3>
               <p className="text-sm text-slate-600">
-                Upload, organize, and securely store all your legal documents
-                with version control and access tracking.
+                Demand letters, cease and desist notices, contract breach, eviction, employment disputes, consumer complaints, and general legal correspondence.
               </p>
             </div>
 
@@ -315,11 +334,10 @@ export default function Home() {
                 <Zap className="w-6 h-6 text-purple-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">
-                AI Document Analysis
+                Jurisdiction-Aware Research
               </h3>
               <p className="text-sm text-slate-600">
-                Get instant AI-powered insights and analysis of your legal
-                documents with key findings and recommendations.
+                Our AI identifies statutes, regulations, and case law specific to your state and situation — cited directly in your letter.
               </p>
             </div>
 
@@ -328,11 +346,10 @@ export default function Home() {
                 <Copy className="w-6 h-6 text-amber-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">
-                Template Library
+                Real-Time Status Tracking
               </h3>
               <p className="text-sm text-slate-600">
-                Access a curated library of professional legal templates tailored
-                to your jurisdiction and needs.
+                Follow your letter from submission through AI drafting, attorney review, and final approval with live status updates and email notifications.
               </p>
             </div>
 
@@ -341,11 +358,10 @@ export default function Home() {
                 <Share2 className="w-6 h-6 text-green-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">
-                Secure Sharing
+                Attorney Review Center
               </h3>
               <p className="text-sm text-slate-600">
-                Safely share documents with legal professionals with granular
-                access controls and expiring links.
+                Licensed attorneys review every AI draft in a dedicated workspace — editing language, verifying citations, and ensuring professional quality.
               </p>
             </div>
 
@@ -354,11 +370,10 @@ export default function Home() {
                 <History className="w-6 h-6 text-red-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">
-                Version Control
+                Full Audit Trail
               </h3>
               <p className="text-sm text-slate-600">
-                Track all changes, restore previous versions, and maintain a
-                complete audit trail of your documents.
+                Every action is logged — from intake to AI generation to attorney edits and final approval. Complete transparency at every step.
               </p>
             </div>
 
@@ -367,11 +382,10 @@ export default function Home() {
                 <Shield className="w-6 h-6 text-indigo-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">
-                Bank-Level Security
+                Encrypted & Confidential
               </h3>
               <p className="text-sm text-slate-600">
-                Your documents are encrypted and stored securely with full
-                compliance to data protection regulations.
+                Your case details are encrypted in transit and at rest. Attorneys are bound by professional confidentiality obligations. Your data is never shared.
               </p>
             </div>
           </div>
@@ -391,45 +405,48 @@ export default function Home() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-slate-600 text-lg mb-3">
-            Start with one letter or unlock unlimited access
+            Your first letter is free. After that, choose the plan that fits.
           </p>
           <p className="text-blue-600 text-sm mb-12 font-semibold">
-            Have a referral code? Get 20% off any plan!
+            Have an affiliate code? Apply it at checkout for 20% off.
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
               {
-                plan: "Single Letter",
+                plan: "Pay Per Letter",
                 price: "$200",
-                desc: "One complete legal letter",
-                sub: "or $160 with referral code",
+                period: "one-time",
+                features: ["Single attorney-reviewed letter", "AI legal research included", "Downloadable PDF", "Full audit trail"],
+                sub: "Best for a one-time legal need",
                 highlight: false,
               },
               {
-                plan: "Membership",
-                price: "$200/mo",
-                desc: "$50 per letter, unlimited",
-                sub: "or $160/mo with referral code",
+                plan: "Monthly",
+                price: "$79",
+                period: "/month",
+                features: ["4 letters per month", "Priority attorney review", "Downloadable PDFs", "Cancel anytime"],
+                sub: "Best for ongoing legal matters",
                 highlight: true,
               },
               {
                 plan: "Annual",
-                price: "$2,000/yr",
-                desc: "48 letters per year",
-                sub: "or $1,600/yr with referral code",
+                price: "$599",
+                period: "/year",
+                features: ["48 letters per year", "Priority attorney review", "Downloadable PDFs", "Save $349 vs monthly"],
+                sub: "Best value for frequent users",
                 highlight: false,
               },
             ].map((tier) => (
               <div
                 key={tier.plan}
-                className={`rounded-2xl p-6 border ${
+                className={`rounded-2xl p-6 border text-left ${
                   tier.highlight
-                    ? "border-blue-500 bg-blue-600 text-white shadow-xl shadow-blue-200"
+                    ? "border-blue-500 bg-blue-600 text-white shadow-xl shadow-blue-200 relative"
                     : "border-slate-200 bg-white shadow-sm"
                 }`}
               >
                 {tier.highlight && (
-                  <div className="text-blue-200 text-xs font-bold mb-2 tracking-widest">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-3 py-1 rounded-full tracking-wide">
                     MOST POPULAR
                   </div>
                 )}
@@ -440,20 +457,34 @@ export default function Home() {
                 >
                   {tier.plan}
                 </h3>
-                <div
-                  className={`text-3xl font-bold mb-1 ${
-                    tier.highlight ? "text-white" : "text-slate-900"
-                  }`}
-                >
-                  {tier.price}
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span
+                    className={`text-3xl font-bold ${
+                      tier.highlight ? "text-white" : "text-slate-900"
+                    }`}
+                  >
+                    {tier.price}
+                  </span>
+                  <span
+                    className={`text-sm ${
+                      tier.highlight ? "text-blue-200" : "text-slate-400"
+                    }`}
+                  >
+                    {tier.period}
+                  </span>
                 </div>
-                <p
-                  className={`text-sm mb-1 ${
-                    tier.highlight ? "text-blue-100" : "text-slate-500"
-                  }`}
-                >
-                  {tier.desc}
-                </p>
+                <ul className="space-y-2 mb-4">
+                  {tier.features.map((f) => (
+                    <li key={f} className={`flex items-start gap-2 text-sm ${
+                      tier.highlight ? "text-blue-100" : "text-slate-600"
+                    }`}>
+                      <CheckCircle2 className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                        tier.highlight ? "text-blue-200" : "text-green-500"
+                      }`} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
                 <p
                   className={`text-xs ${
                     tier.highlight ? "text-blue-200" : "text-slate-400"
@@ -464,13 +495,16 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <Button
-            size="lg"
-            className="mt-10 bg-blue-600 hover:bg-blue-700 text-white px-10 h-12 text-lg shadow-lg rounded-xl"
-            onClick={goToLogin}
-          >
-            Get Started Today <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
+          <div className="mt-10 space-y-3">
+            <Button
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-12 text-lg shadow-lg rounded-xl"
+              onClick={goToLogin}
+            >
+              Start Your Free Letter <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+            <p className="text-slate-500 text-sm">No credit card required for your first letter</p>
+          </div>
         </div>
       </section>
       {/* FAQ Section */}
@@ -492,35 +526,39 @@ export default function Home() {
             {[
               {
                 q: "What is Talk to My Lawyer?",
-                a: "Talk to My Lawyer is an AI-powered legal letter drafting service with mandatory attorney review. You submit your legal matter, our AI researches applicable laws and drafts a professional letter, and then a licensed attorney reviews, edits, and approves the final document.",
+                a: "Talk to My Lawyer is a legal letter service that combines AI drafting with mandatory attorney review. You describe your legal situation through a guided intake form, our AI researches applicable laws for your jurisdiction and generates a professional letter, and then a licensed attorney reviews, edits, and approves the final document before you receive it.",
               },
               {
-                q: "How much does a letter cost?",
-                a: "A single attorney-reviewed legal letter costs $200. This covers AI-powered legal research, professional letter drafting, licensed attorney review and editing, and a downloadable PDF of the final approved letter. We also offer subscription plans for multiple letters per month.",
+                q: "Is my first letter really free?",
+                a: "Yes. Your first letter is generated and submitted for attorney review at no cost. You can read the full AI draft, and once the attorney approves it, you can download the final PDF. No credit card is required for your first letter.",
+              },
+              {
+                q: "How much does it cost after the first letter?",
+                a: "After your free letter, you can pay $200 per letter on a one-time basis, or subscribe to our Monthly plan ($79/month for 4 letters) or Annual plan ($599/year for 48 letters). Affiliate discount codes can reduce the price by 20% on any plan.",
               },
               {
                 q: "How long does it take to receive my letter?",
-                a: "Most letters are delivered within 24\u201348 hours of payment. The AI drafting stage typically completes within 2\u20135 minutes. Attorney review is the primary variable \u2014 attorneys aim to complete reviews within 24 hours during business days.",
+                a: "The AI research and drafting stage typically completes within 2\u20135 minutes. Attorney review is the primary variable \u2014 most reviews are completed within 24\u201348 hours during business days. You receive email notifications at each stage so you always know where your letter stands.",
               },
               {
                 q: "Are these letters legally valid?",
-                a: "Yes. All letters are reviewed and approved by licensed attorneys. They are professionally drafted legal correspondence you can use in real-world situations. However, a legal letter is not a court filing or legal judgment \u2014 it is formal written communication that asserts your legal position.",
+                a: "Yes. Every letter is reviewed and approved by a licensed attorney before delivery. These are professionally drafted legal correspondence you can use in real-world situations \u2014 to assert your rights, demand payment, or put another party on notice. A legal letter is not a court filing, but it is a recognized and effective first step in resolving disputes.",
               },
               {
-                q: "What types of legal letters can I get?",
-                a: "We support Demand Letters, Cease and Desist Notices, Contract Breach Letters, Eviction Notices, Employment Dispute Letters, Consumer Complaint Letters, and General Legal Correspondence. More letter types are added regularly.",
+                q: "What types of legal letters can I request?",
+                a: "We currently support seven letter types: Demand Letters, Cease and Desist Notices, Contract Breach Letters, Eviction Notices, Employment Dispute Letters, Consumer Complaint Letters, and General Legal Correspondence. Additional types are added regularly based on user demand.",
               },
               {
                 q: "Who reviews my letter?",
-                a: "Every letter is reviewed by a licensed attorney before delivery. Attorneys review the AI-generated draft, make any necessary edits, and either approve, reject, or request changes. You only receive a letter that has been explicitly approved by a licensed attorney.",
+                a: "Every letter is reviewed by a licensed attorney in our Review Center. Attorneys read the AI-generated draft, verify legal citations, make edits where needed, and either approve the letter, reject it, or request additional information from you. No letter is delivered without explicit attorney sign-off.",
               },
               {
-                q: "Can I see the AI draft before paying?",
-                a: "Yes. After the AI completes drafting, you can preview a partially blurred version of your letter. To unlock the full letter and submit it for attorney review, you pay the $200 fee at that point.",
+                q: "Can I see the AI draft before it goes to an attorney?",
+                a: "Yes. For your first free letter, you see the full AI draft and can send it for attorney review at no cost. For subsequent letters without a subscription, you see a blurred preview and can either pay $200 to unlock it or subscribe to a monthly or annual plan.",
               },
               {
                 q: "Is my information confidential?",
-                a: "Absolutely. All information you provide is treated as confidential. We use industry-standard encryption for data in transit and at rest. Attorneys who review your letters are bound by professional confidentiality obligations.",
+                a: "Absolutely. All case details are encrypted in transit and at rest using industry-standard protocols. Attorneys who review your letters are bound by professional confidentiality obligations. We never share your information with third parties.",
               },
             ].map((item, idx) => (
               <AccordionItem
@@ -546,6 +584,88 @@ export default function Home() {
           </div>
         </div>
       </section>
+      {/* Trust & Security Visual */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
+                <Shield className="w-4 h-4" />
+                Enterprise-Grade Security
+              </div>
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">
+                Your confidential information, protected at every layer
+              </h2>
+              <p className="text-slate-600 leading-relaxed mb-6">
+                All case details are encrypted in transit and at rest using industry-standard TLS and AES-256 protocols. Attorneys who review your letters are bound by professional confidentiality obligations. We never share your data with third parties, and you retain full ownership of every document.
+              </p>
+              <div className="space-y-3">
+                {[
+                  "End-to-end encryption for all submissions",
+                  "Role-based access control — only assigned attorneys see your case",
+                  "Full audit trail of every action taken on your letter",
+                  "SOC 2 compliant infrastructure",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-sm text-slate-700">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <img
+                src={SECURITY_IMG}
+                alt="Enterprise-grade security and encryption"
+                className="w-full max-w-md h-auto rounded-2xl shadow-xl"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Attorney Review Visual */}
+      <section className="py-20 px-4 bg-slate-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="flex justify-center order-2 md:order-1">
+              <img
+                src={ATTORNEY_IMG}
+                alt="Licensed attorney reviewing legal letter in the Review Center"
+                className="w-full max-w-md h-auto rounded-2xl shadow-xl"
+                loading="lazy"
+              />
+            </div>
+            <div className="order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
+                <Scale className="w-4 h-4" />
+                Human Legal Oversight
+              </div>
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">
+                Every letter reviewed by a licensed attorney
+              </h2>
+              <p className="text-slate-600 leading-relaxed mb-6">
+                AI generates the first draft, but a real attorney has the final word. Our Review Center gives attorneys a dedicated workspace to read your draft, verify legal citations, edit language for precision, and approve or request changes — ensuring every letter meets professional standards.
+              </p>
+              <div className="space-y-3">
+                {[
+                  "Inline editing with version history",
+                  "Legal citation verification",
+                  "Approve, reject, or request changes workflow",
+                  "Complete audit trail for compliance",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-sm text-slate-700">
+                    <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-slate-900 py-8 px-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">

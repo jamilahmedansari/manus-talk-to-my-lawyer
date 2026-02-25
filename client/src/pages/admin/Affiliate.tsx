@@ -83,14 +83,14 @@ export default function AdminAffiliate() {
 
   const processPayout = trpc.affiliate.adminProcessPayout.useMutation({
     onSuccess: () => {
-      toast.success("Payout processed!");
+      toast.success("Payout processed", { description: "The commission has been marked as paid." });
       setProcessingPayout(null);
       setRejectionReason("");
       utils.affiliate.adminAllPayouts.invalidate();
       utils.affiliate.adminAllCommissions.invalidate();
       utils.affiliate.adminEmployeePerformance.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error("Payout failed", { description: err.message }),
   });
 
   const handleProcessPayout = () => {
@@ -105,10 +105,10 @@ export default function AdminAffiliate() {
   // ─── Code Toggle ────────────────────────────────────────────
   const updateCode = trpc.affiliate.adminUpdateCode.useMutation({
     onSuccess: () => {
-      toast.success("Discount code updated");
+      toast.success("Discount code updated", { description: "The new code is now active for this affiliate." });
       utils.affiliate.adminAllCodes.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error("Update failed", { description: err.message }),
   });
 
   // ─── Summary Stats ──────────────────────────────────────────

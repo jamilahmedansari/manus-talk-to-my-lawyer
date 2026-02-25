@@ -57,13 +57,13 @@ export default function Onboarding() {
   const completeOnboarding = trpc.auth.completeOnboarding.useMutation({
     onSuccess: (data) => {
       utils.auth.me.invalidate();
-      toast.success("Welcome aboard!", {
-        description: data.message,
+      toast.success("Profile saved", {
+        description: data.message || "Your account is ready. Redirecting to your dashboard.",
       });
       navigate(getRoleDashboard(data.role));
     },
     onError: (err) => {
-      toast.error("Onboarding failed", { description: err.message });
+      toast.error("Could not save profile", { description: err.message || "Please try again." });
       setLoading(false);
     },
   });

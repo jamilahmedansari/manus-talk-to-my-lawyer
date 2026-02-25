@@ -50,11 +50,11 @@ export function LetterPaywall({ letterId, letterType, subject, draftContent }: L
   // Subscription checkout (for upsell CTA)
   const subscribeCheckout = trpc.billing.createCheckout.useMutation({
     onSuccess: (data) => {
-      toast.info("Redirecting to secure checkout...");
+      toast.info("Opening secure checkout", { description: "You'll be redirected to Stripe to complete your payment." });
       window.location.href = data.url;
     },
     onError: (err) => {
-      toast.error("Checkout failed", { description: err.message });
+      toast.error("Unable to start checkout", { description: err.message || "Please try again or contact support." });
     },
   });
 
@@ -66,21 +66,21 @@ export function LetterPaywall({ letterId, letterType, subject, draftContent }: L
       }
     },
     onError: (err) => {
-      toast.error("Payment setup failed", { description: err.message });
+      toast.error("Payment could not be initiated", { description: err.message || "Please try again in a moment." });
       setIsRedirecting(false);
     },
   });
 
   const freeUnlock = trpc.billing.freeUnlock.useMutation({
     onSuccess: () => {
-      toast.success("Your letter has been submitted for attorney review — free of charge!", {
+      toast.success("Letter submitted for attorney review", {
         description: "You'll receive an email when it's approved.",
         duration: 6000,
       });
       window.location.reload();
     },
     onError: (err) => {
-      toast.error("Could not submit for review", { description: err.message });
+      toast.error("Submission failed", { description: err.message || "Please try again or contact support." });
     },
   });
 

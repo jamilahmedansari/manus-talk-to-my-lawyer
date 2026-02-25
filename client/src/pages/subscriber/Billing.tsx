@@ -117,7 +117,7 @@ export default function Billing() {
       window.open(data.url, "_blank");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to open billing portal");
+      toast.error("Could not open billing portal", { description: err.message || "Please try again in a moment." });
     },
   });
 
@@ -125,13 +125,13 @@ export default function Billing() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
-      toast.success("Payment successful! Your subscription is now active.");
+      toast.success("Payment confirmed", { description: "Your subscription is now active. You can start submitting letters." });
       utils.billing.getSubscription.invalidate();
       utils.billing.checkCanSubmit.invalidate();
       // Clean up URL
       window.history.replaceState({}, "", "/subscriber/billing");
     } else if (params.get("canceled") === "true") {
-      toast.info("Checkout was canceled. No charges were made.");
+      toast.info("Checkout canceled", { description: "No charges were made. You can try again anytime." });
       window.history.replaceState({}, "", "/subscriber/billing");
     }
   }, []);

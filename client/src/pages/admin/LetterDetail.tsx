@@ -40,22 +40,22 @@ export default function AdminLetterDetail() {
 
   const forceStatusMutation = trpc.admin.forceStatusTransition.useMutation({
     onSuccess: () => {
-      toast.success("Status updated successfully");
+      toast.success("Status updated", { description: "The letter status has been changed." });
       setShowForceForm(false);
       setForceStatus("");
       setForceNote("");
       refetch();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error("Status update failed", { description: err.message }),
   });
 
   const [retryStage, setRetryStage] = useState<"research" | "drafting">("research");
   const retryMutation = trpc.admin.retryJob.useMutation({
     onSuccess: () => {
-      toast.success("Pipeline retry triggered");
+      toast.success("Pipeline retry triggered", { description: "The letter is being re-processed through the AI pipeline." });
       refetch();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error("Retry failed", { description: err.message }),
   });
 
   if (!letter) {
@@ -71,8 +71,8 @@ export default function AdminLetterDetail() {
   const letterStatus = (l.status ?? "submitted") as string;
 
   const handleForceStatus = () => {
-    if (!forceStatus) { toast.error("Please select a target status"); return; }
-    if (!forceNote.trim()) { toast.error("Please provide a reason for the force transition"); return; }
+    if (!forceStatus) { toast.error("Missing status", { description: "Please select a target status before proceeding." }); return; }
+    if (!forceNote.trim()) { toast.error("Reason required", { description: "Please provide a reason for the force transition." }); return; }
     forceStatusMutation.mutate({ letterId, newStatus: forceStatus as any, reason: forceNote });
   };
 

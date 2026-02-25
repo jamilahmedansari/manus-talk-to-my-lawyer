@@ -65,8 +65,8 @@ export default function Login() {
       // Invalidate the auth.me query to refresh user state
       await utils.auth.me.invalidate();
 
-      toast.success("Welcome back!", {
-        description: "You have been signed in successfully.",
+      toast.success("Signed in successfully", {
+        description: "Welcome back. Redirecting to your dashboard.",
       });
 
       // Role-based redirect

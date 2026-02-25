@@ -30,16 +30,16 @@ export default function AdminJobs() {
       );
       refetch();
     },
-    onError: (e) => toast.error(`Purge failed: ${e.message}`),
+    onError: (e) => toast.error("Purge failed", { description: e.message }),
   });
 
   const retryJob = trpc.admin.retryJob.useMutation({
     onSuccess: (_, vars) => {
-      toast.success(`Retry started for letter #${vars.letterId}`);
+      toast.success("Retry initiated", { description: `Letter #${vars.letterId} has been re-queued for processing.` });
       setRetrying(null);
       setTimeout(() => refetch(), 2000);
     },
-    onError: (e) => { toast.error(e.message); setRetrying(null); },
+    onError: (e) => { toast.error("Retry failed", { description: e.message }); setRetrying(null); },
   });
 
   const jobCount = failedJobs?.length ?? 0;

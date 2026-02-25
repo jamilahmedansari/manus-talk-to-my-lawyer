@@ -95,19 +95,19 @@ export default function AffiliateDashboard() {
 
   const requestPayout = trpc.affiliate.requestPayout.useMutation({
     onSuccess: () => {
-      toast.success("Payout request submitted!");
+      toast.success("Payout requested", { description: "Your payout request has been submitted for admin review." });
       setPayoutOpen(false);
       setPayoutAmount("");
       utils.affiliate.myPayouts.invalidate();
       utils.affiliate.myEarnings.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error("Payout request failed", { description: err.message }),
   });
 
   const handleRequestPayout = () => {
     const amountCents = Math.round(parseFloat(payoutAmount) * 100);
     if (isNaN(amountCents) || amountCents < 1000) {
-      toast.error("Minimum payout is $10.00");
+      toast.error("Below minimum", { description: "The minimum payout amount is $10.00." });
       return;
     }
     requestPayout.mutate({ amount: amountCents, paymentMethod: payoutMethod });
@@ -117,8 +117,8 @@ export default function AffiliateDashboard() {
   const handleCopyCode = () => {
     if (!discountCode?.code) return;
     navigator.clipboard.writeText(discountCode.code).then(
-      () => toast.success("Discount code copied!"),
-      () => toast.error("Failed to copy")
+      () => toast.success("Copied", { description: "Discount code copied to clipboard." }),
+      () => toast.error("Copy failed", { description: "Please select and copy the code manually." })
     );
   };
 
@@ -129,8 +129,8 @@ export default function AffiliateDashboard() {
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink).then(
-      () => toast.success("Referral link copied!"),
-      () => toast.error("Failed to copy")
+      () => toast.success("Copied", { description: "Referral link copied to clipboard." }),
+      () => toast.error("Copy failed", { description: "Please select and copy the link manually." })
     );
   };
 

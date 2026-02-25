@@ -83,7 +83,7 @@ export default function OnboardingModal({ forceShow, onDismiss }: OnboardingModa
 
   const handleFinish = () => {
     handleDismiss();
-    toast.success("You're all set! Submit your first letter to get started.");
+    toast.success("Welcome aboard", { description: "Your profile is set up. Submit your first letter to get started." });
   };
 
   const handleNext = () => {

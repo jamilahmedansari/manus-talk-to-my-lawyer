@@ -16,8 +16,8 @@ const ROLE_CONFIG = {
 export default function AdminUsers() {
   const { data: users, isLoading, refetch } = trpc.admin.users.useQuery({});
   const updateRole = trpc.admin.updateRole.useMutation({
-    onSuccess: () => { toast.success("Role updated"); refetch(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success("Role updated", { description: "The user's permissions have been changed." }); refetch(); },
+    onError: (e) => toast.error("Role update failed", { description: e.message }),
   });
 
   return (

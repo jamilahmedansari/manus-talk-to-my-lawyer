@@ -25,12 +25,12 @@ export default function ForgotPassword() {
       if (!res.ok) {
         // Network responded but with an error — still show sent screen to prevent enumeration
         // but also notify the user something went wrong
-        toast.error("Something went wrong. Please try again.");
+        toast.error("Reset failed", { description: "Something went wrong. Please try again." });
       }
       // Always show success screen to prevent email enumeration
       setSent(true);
     } catch {
-      toast.error("Network error. Please check your connection and try again.");
+      toast.error("Connection error", { description: "Please check your internet connection and try again." });
       setSent(true);
     } finally {
       setLoading(false);

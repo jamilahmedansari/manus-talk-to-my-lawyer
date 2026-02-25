@@ -84,7 +84,7 @@ export default function Signup() {
       }
 
       if (data.needsLogin) {
-        toast.success("Account created!", {
+        toast.success("Account created", {
           description: "Please sign in with your new credentials.",
         });
         navigate("/login");
@@ -99,8 +99,8 @@ export default function Signup() {
 
       await utils.auth.me.invalidate();
 
-      toast.success("Account created!", {
-        description: "Welcome to Talk to My Lawyer.",
+      toast.success("Account created", {
+        description: "Welcome to Talk to My Lawyer. Let's get started.",
       });
 
       localStorage.removeItem("ttml_onboarding_seen");
@@ -153,9 +153,9 @@ export default function Signup() {
                     body: JSON.stringify({ email: signedUpEmail }),
                   });
                   const d = await res.json();
-                  toast.success(d.message || "Verification email resent!");
+                  toast.success("Verification email sent", { description: d.message || "Check your inbox for the confirmation link." });
                 } catch {
-                  toast.error("Failed to resend. Please try again.");
+                  toast.error("Could not resend email", { description: "Please wait a moment and try again." });
                 }
               }}
               className="text-indigo-600 hover:underline text-sm font-medium"

@@ -24,13 +24,13 @@ function GeneratedUnlockedView({ letterId, draftContent }: { letterId: number; d
   const utils = trpc.useUtils();
   const sendForReview = trpc.billing.sendForReview.useMutation({
     onSuccess: () => {
-      toast.success("Letter sent for attorney review!", {
+      toast.success("Letter submitted for review", {
         description: "You'll receive an email when the review is complete.",
         duration: 6000,
       });
       utils.letters.detail.invalidate({ id: letterId });
     },
-    onError: (err: any) => toast.error(err.message ?? "Failed to send for review"),
+    onError: (err: any) => toast.error("Submission failed", { description: err.message ?? "Please try again or contact support." }),
   });
 
   return (
@@ -108,12 +108,12 @@ export default function LetterDetail() {
   useEffect(() => {
     const searchParams = new URLSearchParams(search);
     if (searchParams.get("unlocked") === "true") {
-      toast.success("Payment confirmed! Your letter has been sent for attorney review.", {
-        description: "You'll receive an email when it's approved.",
+      toast.success("Payment confirmed", {
+        description: "Your letter has been sent for attorney review. You'll receive an email when it's approved.",
         duration: 6000,
       });
     } else if (searchParams.get("canceled") === "true") {
-      toast.info("Payment canceled. Your letter is still ready to unlock whenever you're ready.");
+      toast.info("Checkout canceled", { description: "No charges were made. Your letter is still ready whenever you are." });
     }
   }, [search]);
 
@@ -162,22 +162,22 @@ export default function LetterDetail() {
 
   const archiveMutation = trpc.letters.archive.useMutation({
     onSuccess: () => {
-      toast.success("Letter archived successfully.");
+      toast.success("Letter archived", { description: "You can find it in your letter history." });
       window.history.back();
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => toast.error("Could not archive letter", { description: err.message }),
   });
 
   const handleCopyToClipboard = () => {
     const finalVer = data?.versions?.find((v: any) => v.versionType === "final_approved");
     if (!finalVer) {
-      toast.error("No approved letter content to copy.");
+      toast.error("Nothing to copy", { description: "The approved letter content is not yet available." });
       return;
     }
     navigator.clipboard.writeText(finalVer.content).then(() => {
-      toast.success("Letter content copied to clipboard!");
+      toast.success("Copied to clipboard", { description: "The letter content is ready to paste." });
     }).catch(() => {
-      toast.error("Failed to copy to clipboard.");
+      toast.error("Copy failed", { description: "Please try selecting and copying the text manually." });
     });
   };
 
@@ -189,15 +189,15 @@ export default function LetterDetail() {
 
   const updateMutation = trpc.letters.updateForChanges.useMutation({
     onSuccess: () => {
-      toast.success("Your response has been submitted. The AI pipeline will re-process your letter.");
+      toast.success("Response submitted", { description: "The AI pipeline is re-processing your letter with the new information." });
       setUpdateText("");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error("Submission failed", { description: err.message }),
   });
 
   const handleSubmitUpdate = () => {
     if (updateText.trim().length < 10) {
-      toast.error("Please provide at least 10 characters of additional context.");
+      toast.error("Response too short", { description: "Please provide at least 10 characters of additional context." });
       return;
     }
     updateMutation.mutate({ letterId, additionalContext: updateText });
