@@ -444,3 +444,13 @@
 - [x] Write vitest tests for PDF generation, claim notification, approve workflow (30 tests pass)
 - [x] Verify TypeScript compiles cleanly
 - [x] Save checkpoint
+
+## Architecture Notes (Permanent Reference)
+
+- [x] **Pipeline routing confirmed (Feb 25, 2026):** Direct 3-stage API calls are ACTIVE. n8n is DORMANT.
+  - Stage 1: Perplexity sonar-pro (research, 90s timeout)
+  - Stage 2: Anthropic claude-opus-4-5 (draft, 120s timeout)
+  - Stage 3: Anthropic claude-opus-4-5 (final assembly, 120s timeout)
+  - n8n only activates if BOTH N8N_PRIMARY=true AND N8N_WEBHOOK_URL are set in env
+  - N8N_PRIMARY is NOT set → n8n is completely dormant
+  - Full details: docs/PIPELINE_ARCHITECTURE.md
