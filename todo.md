@@ -245,3 +245,13 @@
 - [x] Add admin forceStatusTransition mutation with full audit logging
 - [x] Add frontend polling/revalidation for researching/drafting/pending_review statuses
 - [x] Verify all frontend pages work with real data and fix any issues found
+
+## Phase 24: Pipeline Stuck at Drafting Bug
+- [x] Investigate and fix pipeline stuck at 'drafting' status (not transitioning to generated_locked)
+
+## Phase 25: New Letter Intake Form + Pipeline Timeout Fix
+- [ ] Build multi-step intake form with validation on New Letter button
+- [x] Fix pipeline timeout (add AbortSignal timeouts to generateText calls)
+- [x] Unstick letter #1 and verify end-to-end pipeline flow
+- [x] Switch pipeline from Forge proxy to direct Anthropic SDK + Perplexity API
+- [x] Add proper timeouts (AbortSignal) to all AI calls
