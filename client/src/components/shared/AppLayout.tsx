@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,9 +96,14 @@ export default function AppLayout({ children, title, breadcrumb }: AppLayoutProp
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Authentication Required</h2>
           <p className="text-muted-foreground mb-6">Please sign in to access this page.</p>
-          <Button asChild size="lg" className="w-full">
-            <a href={getLoginUrl()}>Sign In</a>
-          </Button>
+          <div className="flex gap-3">
+            <Button asChild size="lg" variant="outline" className="flex-1">
+              <a href="/login">Sign In</a>
+            </Button>
+            <Button asChild size="lg" className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+              <a href="/signup">Create Account</a>
+            </Button>
+          </div>
         </div>
       </div>
     );

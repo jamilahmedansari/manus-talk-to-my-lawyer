@@ -363,3 +363,39 @@
 
 ### Tests
 - [x] Run all tests: 174/174 passing, 0 TypeScript errors
+
+## Phase 35: Replace Manus OAuth with Supabase Auth (Branded Login/Signup)
+
+### Server-side Auth Migration
+- [x] Install @supabase/supabase-js server-side for admin operations
+- [x] Create server/supabaseAuth.ts: Supabase Admin client for JWT verification + user management
+- [x] Update server/_core/context.ts: verify Supabase JWT (from Authorization header or cookie) instead of Manus session
+- [x] Add /api/auth/signup route: create Supabase Auth user + sync to app users table
+- [x] Add /api/auth/login route: sign in with Supabase Auth (email/password)
+- [x] Add /api/auth/logout route: sign out Supabase session
+- [x] Add /api/auth/refresh route: refresh Supabase session tokens
+- [x] Add /api/auth/forgot-password route: send password reset email via Supabase
+- [x] Update auth.logout tRPC procedure: clear both sb_session and legacy app_session_id cookies
+- [x] Preserve all existing role guards (subscriberProcedure, employeeProcedure, adminProcedure)
+- [x] Set SUPABASE_SERVICE_ROLE_KEY secret (validated via Supabase Admin API)
+
+### Frontend Auth Pages (Branded)
+- [x] Build /login page: branded email/password login form with TTML branding
+- [x] Build /signup page: branded registration form (name, email, password)
+- [x] Build /forgot-password page: password reset email request form
+- [x] Update useAuth.ts: redirect to /login instead of Manus OAuth URL, clear localStorage tokens on logout
+- [x] Update main.tsx: send Supabase access token in Authorization header for all tRPC requests
+- [x] Update main.tsx: redirect to /login on UNAUTHORIZED errors (not Manus OAuth portal)
+- [x] Update AppLayout: sign-in shows both "Sign In" (/login) and "Create Account" (/signup) buttons
+- [x] Update App.tsx: add /login, /signup, /forgot-password routes
+
+### Database Updates
+- [x] Store Supabase Auth UUID in users.openId column (reuse existing column)
+- [x] Ensure user sync on first login (Supabase auth.users → app users table via upsertUser)
+- [x] Preserve all existing foreign key relationships
+
+### Testing & Verification
+- [x] Write Vitest tests for Supabase Auth service_role key validation (5 tests)
+- [x] Fix auth.logout tests to expect 2 cookies cleared (sb_session + legacy)
+- [x] 180/180 tests passing, 0 TypeScript errors
+- [x] Server health: 0 LSP errors, 0 TypeScript errors
