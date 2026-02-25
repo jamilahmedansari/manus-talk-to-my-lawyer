@@ -267,3 +267,6 @@
 - [x] Rewrite Home.tsx to match exact Base44 landing page design (colors, layout, components)
 - [x] Upload logo to S3 and reference it (using Supabase CDN URL directly)
 - [x] Verify landing page renders correctly (TS compiles clean, server running, HMR applied)
+
+## Phase 28: Stripe Payment Method Fix
+- [x] Fix 'No valid payment method types' error on Stripe checkout (add payment_method_types: ['card'])

@@ -74,6 +74,7 @@ export async function createCheckoutSession(params: {
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: customerId,
     client_reference_id: userId.toString(),
+    payment_method_types: ["card"],
     allow_promotion_codes: true,
     metadata: {
       user_id: userId.toString(),
@@ -300,7 +301,7 @@ export async function createLetterUnlockCheckout(params: {
     customer: customerId,
     client_reference_id: userId.toString(),
     mode: "payment",
-    allow_promotion_codes: true,
+    payment_method_types: ["card"],
     metadata: {
       user_id: userId.toString(),
       plan_id: "per_letter",
