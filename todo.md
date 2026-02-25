@@ -705,3 +705,8 @@
 - [x] Rich attorneyReviewSummary memo (statutes chosen, theory strength, factual gaps, demand support)
 - [x] Update runDraftingStage: system + prompt, maxOutputTokens 8000
 - [x] Update assembly prompt (system+user split) to leverage richer research data with 10000 tokens
+
+## Phase 52: Fix First-Letter-Free Submission Gate
+- [x] Update backend checkLetterSubmissionAllowed to allow first-letter-free (countCompletedLetters === 0 bypasses subscription check)
+- [x] Frontend gate auto-passes since checkCanSubmit now returns allowed:true for first-time users
+- [x] Tests: 310/320 passing (10 pre-existing), 0 TypeScript errors

@@ -5,7 +5,7 @@
 
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
-import { getDb } from "./db";
+import { getDb, countCompletedLetters } from "./db";
 import { subscriptions } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { PLANS, getPlanConfig, LETTER_UNLOCK_PRICE_CENTS } from "./stripe-products";
@@ -255,10 +255,19 @@ export async function incrementLettersUsed(userId: number): Promise<void> {
 // ─── Check if User Can Submit Letter ─────────────────────────────────────────
 export async function checkLetterSubmissionAllowed(
   userId: number
-): Promise<{ allowed: boolean; reason?: string; subscription?: any }> {
+): Promise<{ allowed: boolean; reason?: string; subscription?: any; firstLetterFree?: boolean }> {
   const sub = await getUserSubscription(userId);
 
   if (!sub || sub.status !== "active") {
+    // ── First-letter-free: allow users with 0 completed letters to submit ──
+    const completedCount = await countCompletedLetters(userId);
+    if (completedCount === 0) {
+      return {
+        allowed: true,
+        firstLetterFree: true,
+        reason: "Your first letter is free — no subscription required.",
+      };
+    }
     return {
       allowed: false,
       reason: "You need an active subscription to submit a letter. Please choose a plan.",
