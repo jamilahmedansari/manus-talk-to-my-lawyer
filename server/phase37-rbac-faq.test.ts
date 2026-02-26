@@ -195,25 +195,31 @@ describe("Phase 37: Role-based routing, FAQ, Onboarding, Mobile nav", () => {
   // ── Login.tsx role-based redirect ─────────────────────────────────────
   describe("Login.tsx role-based redirect", () => {
     const filePath = join(CLIENT_SRC, "pages", "Login.tsx");
+    const protectedRoutePath = join(CLIENT_SRC, "components", "ProtectedRoute.tsx");
 
-    it("should redirect admin users to /admin", () => {
+    it("should use getRoleDashboard for role-based redirect", () => {
       const content = readFileSync(filePath, "utf-8");
-      expect(content).toContain('navigate("/admin")');
+      expect(content).toContain("getRoleDashboard");
     });
 
-    it("should redirect employee users to /employee", () => {
+    it("should import getRoleDashboard and isRoleAllowedOnPath from ProtectedRoute", () => {
       const content = readFileSync(filePath, "utf-8");
-      expect(content).toContain('navigate("/employee")');
+      expect(content).toContain("getRoleDashboard");
+      expect(content).toContain("isRoleAllowedOnPath");
     });
 
-    it("should redirect attorney users to /attorney", () => {
+    it("should support ?next= deep link redirect", () => {
       const content = readFileSync(filePath, "utf-8");
-      expect(content).toContain('navigate("/attorney")');
+      expect(content).toContain("nextPath");
+      expect(content).toContain("next");
     });
 
-    it("should redirect subscriber users to /dashboard", () => {
-      const content = readFileSync(filePath, "utf-8");
-      expect(content).toContain('navigate("/dashboard")');
+    it("should define getRoleDashboard in ProtectedRoute covering all 4 roles", () => {
+      const content = readFileSync(protectedRoutePath, "utf-8");
+      expect(content).toContain('"/admin"');
+      expect(content).toContain('"/attorney"');
+      expect(content).toContain('"/employee"');
+      expect(content).toContain('"/dashboard"');
     });
   });
 

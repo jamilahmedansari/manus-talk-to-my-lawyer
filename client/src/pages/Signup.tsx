@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { getRoleDashboard, isRoleAllowedOnPath } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +35,16 @@ const ROLE_OPTIONS: { value: RoleOption; label: string; description: string; ico
 
 export default function Signup() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const utils = trpc.useUtils();
+
+  // Parse ?next= from query string
+  const nextPath = (() => {
+    const params = new URLSearchParams(search);
+    const raw = params.get("next");
+    if (!raw) return null;
+    try { return decodeURIComponent(raw); } catch { return null; }
+  })();
 
   const [role, setRole] = useState<RoleOption>("subscriber");
   const [name, setName] = useState("");
@@ -124,13 +134,11 @@ export default function Signup() {
 
       localStorage.removeItem("ttml_onboarding_seen");
 
-      // Redirect based on role
-      if (role === "attorney") {
-        navigate("/attorney");
-      } else if (role === "employee") {
-        navigate("/employee");
+      // Redirect based on role — honour ?next= if the role is allowed on that path
+      if (nextPath && isRoleAllowedOnPath(role, nextPath)) {
+        navigate(nextPath);
       } else {
-        navigate("/dashboard");
+        navigate(getRoleDashboard(role));
       }
     } catch (err: any) {
       if (err?.name === "AbortError") {

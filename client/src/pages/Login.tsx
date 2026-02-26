@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { getRoleDashboard, isRoleAllowedOnPath } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +11,21 @@ import { trpc } from "@/lib/trpc";
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const search = useSearch();
 
   const utils = trpc.useUtils();
+
+  // Parse ?next= from query string
+  const nextPath = (() => {
+    const params = new URLSearchParams(search);
+    const raw = params.get("next");
+    if (!raw) return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+  })();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,12 +83,13 @@ export default function Login() {
         description: "Welcome back. Redirecting to your dashboard.",
       });
 
-      // Role-based redirect
+      // Role-based redirect — honour ?next= if the role is allowed on that path
       const role = data.user?.role ?? data.session?.user?.user_metadata?.role ?? "subscriber";
-      if (role === "admin") navigate("/admin");
-      else if (role === "attorney") navigate("/attorney");
-      else if (role === "employee") navigate("/employee");
-      else navigate("/dashboard");
+      if (nextPath && isRoleAllowedOnPath(role, nextPath)) {
+        navigate(nextPath);
+      } else {
+        navigate(getRoleDashboard(role));
+      }
     } catch (err: any) {
       const msg = err?.name === 'AbortError'
         ? "Request timed out. Please try again — the server may be warming up."

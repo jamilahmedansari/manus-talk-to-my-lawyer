@@ -745,3 +745,8 @@
 - [x] Verify employee and attorney dashboards are accessible
 - [x] Add attorney to DB user_role enum (was missing, causing signup failures)
 - [x] Fix signup redirect (attorney → /attorney, employee → /employee)
+
+## Phase 58: ?next= Deep Link Redirect
+- [x] ProtectedRoute appends ?next=<path> when redirecting unauthenticated users to /login
+- [x] Login.tsx reads ?next= and redirects there after login (with role validation)
+- [x] Signup.tsx also reads ?next= and redirects there after signup
