@@ -750,3 +750,15 @@
 - [x] ProtectedRoute appends ?next=<path> when redirecting unauthenticated users to /login
 - [x] Login.tsx reads ?next= and redirects there after login (with role validation)
 - [x] Signup.tsx also reads ?next= and redirects there after signup
+
+## Phase 59: Subscriber Profile Page
+- [x] Add tRPC procedures for profile data, subscription status, and payment history
+- [x] Build /profile page with account info, subscription card, and payment history table
+- [x] Add profile link to subscriber dashboard nav
+
+## Phase 60: Universal Profile Settings Page
+- [x] Add password change tRPC mutation (via Supabase auth — verifies current password, updates via admin API)
+- [x] Update Profile page to work for all roles (subscriber, employee, attorney, admin)
+- [x] Add username edit and password change sections
+- [x] Update /profile route to allow subscriber, employee, attorney, and admin
+- [x] Add Settings link to sidebar nav for all 4 roles in AppLayout

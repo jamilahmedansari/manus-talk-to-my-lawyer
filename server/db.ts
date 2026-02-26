@@ -99,6 +99,15 @@ export async function updateUserRole(userId: number, role: "subscriber" | "emplo
   await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
+export async function updateUserProfile(userId: number, data: { name?: string; email?: string }) {
+  const db = await getDb();
+  if (!db) return;
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (data.name !== undefined) set.name = data.name;
+  if (data.email !== undefined) set.email = data.email;
+  await db.update(users).set(set as any).where(eq(users.id, userId));
+}
+
 export async function getEmployees() {
   const db = await getDb();
   if (!db) return [];

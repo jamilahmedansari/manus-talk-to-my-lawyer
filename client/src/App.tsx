@@ -25,6 +25,7 @@ import MyLetters from "./pages/subscriber/MyLetters";
 import LetterDetail from "./pages/subscriber/LetterDetail";
 import Billing from "./pages/subscriber/Billing";
 import Receipts from "./pages/subscriber/Receipts";
+import Profile from "./pages/subscriber/Profile";
 
 // Attorney pages (Review Center)
 import EmployeeDashboard from "./pages/employee/Dashboard";
@@ -91,6 +92,11 @@ function Router() {
       <Route path="/subscriber/receipts">
         <ProtectedRoute allowedRoles={["subscriber"]}>
           <Receipts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute allowedRoles={["subscriber", "employee", "attorney", "admin"]}>
+          <Profile />
         </ProtectedRoute>
       </Route>
 

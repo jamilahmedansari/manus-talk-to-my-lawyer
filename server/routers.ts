@@ -31,6 +31,7 @@ import {
   updateLetterStatus,
   updateLetterVersionPointers,
   updateUserRole,
+  updateUserProfile,
   getUserById,
   purgeFailedJobs,
   updateLetterPdfUrl,
@@ -1104,6 +1105,52 @@ export const appRouter = router({
       );
       return performance;
     }),
+  }),
+  // ─── Profile ──────────────────────────────────────────────────────────────
+  profile: router({
+    updateProfile: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(200).optional(),
+        email: z.string().email().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserProfile(ctx.user.id, input);
+        return { success: true };
+      }),
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(6, "Password must be at least 6 characters"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { createClient } = await import("@supabase/supabase-js");
+        const sbUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+        const sbAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+        const sbServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+        // Verify current password by attempting sign-in
+        const verifyClient = createClient(sbUrl, sbAnonKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { error: signInError } = await verifyClient.auth.signInWithPassword({
+          email: ctx.user.email!,
+          password: input.currentPassword,
+        });
+        if (signInError) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect" });
+        }
+        // Update password using service role client
+        const serviceClient = createClient(sbUrl, sbServiceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { error: updateError } = await serviceClient.auth.admin.updateUserById(
+          ctx.user.openId,
+          { password: input.newPassword }
+        );
+        if (updateError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to update password" });
+        }
+        return { success: true };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;
