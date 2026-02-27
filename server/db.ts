@@ -99,10 +99,18 @@ export async function updateUserRole(userId: number, role: "subscriber" | "emplo
   await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
+/** Returns affiliate employees (role = "employee"). Excludes attorneys and admins. */
 export async function getEmployees() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(users).where(inArray(users.role, ["employee", "admin"])).orderBy(users.name);
+  return db.select().from(users).where(inArray(users.role, ["employee"])).orderBy(users.name);
+}
+
+/** Returns attorneys available for letter assignment (role = "attorney" or "admin"). */
+export async function getAttorneys() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).where(inArray(users.role, ["attorney", "admin"])).orderBy(users.name);
 }
 
 // ═══════════════════════════════════════════════════════

@@ -13,7 +13,7 @@ This document defines the exact remaining feature gaps, required schema changes,
 
 | Document | Purpose |
 |----------|---------|
-| [`docs/TTML_REMAINING_FEATURES_PROMPT.md`](docs/TTML_REMAINING_FEATURES_PROMPT.md) | **Master validation reference** — 4 remaining feature gaps with exact implementation specs |
+| [`docs/TTML_REMAINING_FEATURES_PROMPT.md`](docs/TTML_REMAINING_FEATURES_PROMPT.md) | **Master validation reference** — remaining feature gaps with exact implementation specs |
 | [`docs/PIPELINE_ARCHITECTURE.md`](docs/PIPELINE_ARCHITECTURE.md) | AI pipeline routing decision (Perplexity → Anthropic × 2 active, n8n dormant) |
 | [`docs/GAP_ANALYSIS.md`](docs/GAP_ANALYSIS.md) | Historical gap analysis from spec audit |
 | [`docs/SUPABASE_MCP_CAPABILITIES.md`](docs/SUPABASE_MCP_CAPABILITIES.md) | Supabase MCP connector usage guide |
@@ -37,8 +37,17 @@ This document defines the exact remaining feature gaps, required schema changes,
 - **Database:** Supabase (PostgreSQL + RLS)
 - **Auth:** Supabase Auth (JWT)
 - **Payments:** Stripe (subscriptions + per-letter checkout)
-- **Email:** Resend (transactional, 9 templates)
+- **Email:** Resend (transactional)
 - **AI Pipeline:** Perplexity API (research) → Anthropic Claude (draft + assembly)
+
+## Roles
+
+| Role | Purpose | Access |
+|------|---------|--------|
+| `subscriber` | Letter clients | Submit letters, view results, billing |
+| `employee` | **Affiliates only** | Discount code (20% off), 5% commission on paid subscriptions; no Review Center access |
+| `attorney` | **Reviewers only** | Review Center: claim, edit, approve/reject letters; no affiliate features |
+| `admin` | Operations | Full access to all portals |
 
 ## Development
 

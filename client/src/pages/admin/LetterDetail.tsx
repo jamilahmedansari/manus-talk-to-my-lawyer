@@ -193,7 +193,7 @@ export default function AdminLetterDetail() {
               <span className="text-muted-foreground">Subscriber</span>
               <span className="font-medium">User #{l.userId}</span>
               <span className="text-muted-foreground">Reviewer</span>
-              <span className="font-medium">{l.assignedReviewerId ? `Employee #${l.assignedReviewerId}` : "Unassigned"}</span>
+              <span className="font-medium">{l.assignedReviewerId ? `Attorney #${l.assignedReviewerId}` : "Unassigned"}</span>
               <span className="text-muted-foreground">Created</span>
               <span className="font-medium">{new Date(l.createdAt).toLocaleString()}</span>
               <span className="text-muted-foreground">Updated</span>

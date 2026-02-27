@@ -46,14 +46,16 @@
 ## GAPS — Features Still Needed (Priority Order)
 
 ### GAP 1: Role Split — Attorney vs Employee ✅ IMPLEMENTED
-**Current:** 4 roles: `subscriber`, `employee`, `attorney`, `admin`. The `attorney` role has its own `attorneyProcedure` guard and uses `/attorney/*` route paths (with backward-compat `/review/*` aliases).
+**Current:** 4 roles: `subscriber`, `employee`, `attorney`, `admin`. The `employee` role is exclusively for **affiliates** (discount codes + commission). The `attorney` role is exclusively for **letter review** (Review Center).
 **Implemented:**
 - [x] `attorney` added to `userRoleEnum` in `drizzle/schema.ts`
-- [x] `attorneyProcedure` guard in `server/routers.ts`
+- [x] `attorneyProcedure` guard in `server/routers.ts` — review center procedures (queue, claim, approve, reject, requestChanges, saveEdit) all require `attorney` or `admin` role
+- [x] `employeeProcedure` guard is for affiliate-only procedures (`affiliate.*`)
 - [x] Review center routes at `/attorney/queue` and `/attorney/:id` (+ `/review/*` backward-compat aliases)
 - [x] `AttorneyDashboard` at `/attorney`
 - [x] `ProtectedRoute` handles `attorney` role in `App.tsx`
 - [x] `auth.completeOnboarding` supports `attorney` role
+- [x] `employee` role redirects to `/employee` (affiliate dashboard) on login, not `/review`
 
 ### GAP 2: Onboarding Role Selection ✅ IMPLEMENTED
 **Current:** Post-signup `/onboarding` page exists with role selection (Subscriber / Employee / Attorney). `auth.completeOnboarding` tRPC mutation handles role assignment and auto-generates affiliate discount codes for employees.

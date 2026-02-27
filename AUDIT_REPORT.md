@@ -2,10 +2,10 @@
 
 ## What's Already Implemented Correctly
 1. **Schema**: 8 tables (users, letter_requests, letter_versions, review_actions, workflow_jobs, research_runs, attachments, notifications) — matches spec
-2. **Status machine**: submitted → researching → drafting → pending_review → under_review → approved/rejected/needs_changes — correct
+2. **Status machine**: submitted → researching → drafting → generated_unlocked (first letter) / generated_locked (returning) → pending_review → under_review → approved/rejected/needs_changes — correct
 3. **3-stage pipeline**: Perplexity (sonar-pro) → Anthropic (claude-opus-4-5) → Anthropic (claude-opus-4-5) — correct
 4. **Deterministic validators**: validateResearchPacket, parseAndValidateDraftLlmOutput, validateFinalLetter — all present
-5. **RBAC guards**: subscriberProcedure, employeeProcedure, adminProcedure — correct
+5. **RBAC guards**: subscriberProcedure, employeeProcedure, attorneyProcedure, adminProcedure — correct. `employee` = affiliate only (discount codes + 5% commission); `attorney` = review center only.
 6. **Subscriber-safe detail**: getLetterRequestSafeForSubscriber never returns AI draft or internal research — correct
 7. **Version tracking**: ai_draft, attorney_edit, final_approved — correct
 8. **Audit trail**: review_actions with internal/user_visible visibility — correct
@@ -26,9 +26,9 @@
 8. **Polling/revalidation on frontend** — Need to add refetchInterval for in-progress statuses
 9. **No subscriber update form for needs_changes** — Need to add
 
-## Action Plan
-1. Add subscriber `updateForChanges` mutation
-2. Fix research provider default
-3. Add admin `forceStatusTransition` mutation
-4. Add polling/revalidation on frontend for researching/drafting/pending_review
-5. Verify all frontend pages work with real data
+## Action Plan (completed)
+1. ✅ Add subscriber `updateForChanges` mutation
+2. ✅ Fix research provider default — now "perplexity"
+3. ✅ Add admin `forceStatusTransition` mutation
+4. ✅ Add polling/revalidation on frontend for researching/drafting/pending_review
+5. ✅ All frontend pages verified with real data

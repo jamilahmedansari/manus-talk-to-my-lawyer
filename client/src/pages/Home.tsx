@@ -42,7 +42,7 @@ export default function Home() {
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       if (user.role === "admin") navigate("/admin");
-      else if (user.role === "employee") navigate("/review");
+      else if (user.role === "employee") navigate("/employee");
       else navigate("/dashboard");
     }
   }, [loading, isAuthenticated, user]);

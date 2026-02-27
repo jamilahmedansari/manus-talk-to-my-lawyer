@@ -64,6 +64,12 @@ The spec requires 7 minimum indexes:
 
 The spec defines 4 roles (`subscriber`, `employee`, `attorney_admin`, `super_admin`). The implementation uses 4 roles (`subscriber`, `employee`, `attorney`, `admin`). The `attorney` role is distinct from `employee` and has its own `attorneyProcedure` guard. The `admin` role maps to the spec's `super_admin`.
 
+**Role responsibilities:**
+- `subscriber` — submits letters, views results, manages billing
+- `employee` — **affiliate only**: holds a discount code (20% off), earns commission (5%) when their code is used for a paid subscription; does **not** access the Review Center
+- `attorney` — **review center only**: claims letters, edits drafts, approves/rejects/requests changes; does **not** have affiliate features
+- `admin` — full access to all portals including override actions
+
 ### RLS / Security — Status
 
 The application uses PostgreSQL (Supabase), so Row Level Security is enforced at both the database level (via Supabase RLS policies) and at the tRPC procedure level via `subscriberProcedure`, `employeeProcedure`, `attorneyProcedure`, and `adminProcedure` middleware guards.
@@ -73,7 +79,7 @@ The application uses PostgreSQL (Supabase), so Row Level Security is enforced at
 | Subscribers can only access their own requests | ✅ `getLetterRequestSafeForSubscriber(id, userId)` enforces ownership |
 | Subscribers cannot read ai_draft / attorney_edit / research internals | ✅ `getLetterVersionsByRequestId(id, false)` returns only `final_approved` |
 | Subscribers cannot read internal review_actions | ✅ `getReviewActions(id, false)` filters to `user_visible` only |
-| Attorney/admin roles can read queue, drafts, research | ✅ `employeeProcedure` / `adminProcedure` gates |
+| Attorney/admin roles can read queue, drafts, research | ✅ `attorneyProcedure` / `adminProcedure` gates |
 | Sensitive inserts/updates through secure server-side code | ✅ All mutations are tRPC procedures, no direct DB access from client |
 
 ---

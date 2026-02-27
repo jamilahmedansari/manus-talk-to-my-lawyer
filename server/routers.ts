@@ -14,6 +14,7 @@ import {
   getAllUsers,
   getAttachmentsByLetterId,
   getEmployees,
+  getAttorneys,
   getFailedJobs,
   getLetterRequestById,
   getLetterRequestSafeForSubscriber,
@@ -376,7 +377,7 @@ export const appRouter = router({
       }),
   }),
 
-  // ─── Employee/Attorney: Review Center ─────────────────────────────────────
+  // ─── Attorney: Review Center ──────────────────────────────────────────────
   review: router({
     queue: attorneyProcedure
       .input(z.object({
@@ -624,6 +625,8 @@ export const appRouter = router({
 
     employees: adminProcedure.query(async () => getEmployees()),
 
+    attorneys: adminProcedure.query(async () => getAttorneys()),
+
     getLetterDetail: adminProcedure
       .input(z.object({ letterId: z.number() }))
       .query(async ({ input }) => {
@@ -668,17 +671,17 @@ export const appRouter = router({
       }),
 
     assignLetter: adminProcedure
-      .input(z.object({ letterId: z.number(), employeeId: z.number() }))
+      .input(z.object({ letterId: z.number(), attorneyId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const letter = await getLetterRequestById(input.letterId);
         if (!letter) throw new TRPCError({ code: "NOT_FOUND" });
-        await updateLetterStatus(input.letterId, letter.status, { assignedReviewerId: input.employeeId });
-        await logReviewAction({ letterRequestId: input.letterId, reviewerId: ctx.user.id, actorType: "admin", action: "assigned_reviewer", noteText: `Assigned to employee ID ${input.employeeId}`, noteVisibility: "internal" });
+        await updateLetterStatus(input.letterId, letter.status, { assignedReviewerId: input.attorneyId });
+        await logReviewAction({ letterRequestId: input.letterId, reviewerId: ctx.user.id, actorType: "admin", action: "assigned_reviewer", noteText: `Assigned to attorney ID ${input.attorneyId}`, noteVisibility: "internal" });
         try {
           const appUrl = getAppUrl(ctx.req);
-          const employee = await getUserById(input.employeeId);
-          if (employee?.email) {
-            await sendNewReviewNeededEmail({ to: employee.email, name: employee.name ?? "Attorney", letterSubject: letter.subject, letterId: input.letterId, letterType: letter.letterType, jurisdiction: `${letter.jurisdictionState ?? ""}, ${letter.jurisdictionCountry ?? "US"}`, appUrl });
+          const attorney = await getUserById(input.attorneyId);
+          if (attorney?.email) {
+            await sendNewReviewNeededEmail({ to: attorney.email, name: attorney.name ?? "Attorney", letterSubject: letter.subject, letterId: input.letterId, letterType: letter.letterType, jurisdiction: `${letter.jurisdictionState ?? ""}, ${letter.jurisdictionCountry ?? "US"}`, appUrl });
           }
         } catch (err) { console.error("[Notify] Failed:", err); }
         return { success: true };

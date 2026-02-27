@@ -18,6 +18,12 @@ needs_changes → researching | drafting
 `subscriber` | `employee` | `attorney` | `admin`  
 Guards: `subscriberProcedure` | `employeeProcedure` | `attorneyProcedure` | `adminProcedure`
 
+**Role responsibilities (strict separation):**
+- `employee` — **affiliate only**: issues a 20% discount code; earns 5% commission when their code is used for a paid subscription. Has **no access** to the Review Center.
+- `attorney` — **review center only**: claims letters from the queue, edits AI drafts, approves/rejects/requests changes. Has **no affiliate features**.
+- `employeeProcedure` guards `affiliate.*` procedures only.
+- `attorneyProcedure` guards all `review.*` procedures (queue, claim, approve, reject, requestChanges, saveEdit).
+
 ### Key Types
 - `LetterRequest` — `letterRequests` table
 - `LetterVersion` — `letterVersions` table, `versionType: "ai_draft" | "attorney_edit" | "final_approved"`

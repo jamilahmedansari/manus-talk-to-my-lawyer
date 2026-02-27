@@ -121,7 +121,7 @@ export function useLetterListRealtime({
 }
 
 // ─── Hook: useReviewQueueRealtime ──────────────────────────────────────────────
-// Subscribes to any letter_requests change for the employee review queue.
+// Subscribes to any letter_requests change for the attorney review queue.
 // Triggers a refetch whenever any letter status changes.
 
 type UseReviewQueueRealtimeOptions = {
