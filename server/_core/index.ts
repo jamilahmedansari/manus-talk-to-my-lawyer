@@ -8,6 +8,7 @@ import { registerSupabaseAuthRoutes } from "../supabaseAuth";
 import { registerChatRoutes } from "./chat";
 import { registerN8nCallbackRoute } from "../n8nCallback";
 import { registerEmailPreviewRoute } from "../emailPreview";
+import { registerDraftRemindersRoute } from "../draftReminders";
 import { stripeWebhookHandler } from "../stripeWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -65,6 +66,8 @@ async function startServer() {
   registerN8nCallbackRoute(app);
   // Dev-only email template preview (disabled in production)
   registerEmailPreviewRoute(app);
+  // Cron: 48-hour draft reminder emails for unpaid generated_locked letters
+  registerDraftRemindersRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

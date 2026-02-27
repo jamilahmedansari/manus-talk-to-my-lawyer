@@ -876,3 +876,13 @@
 - [x] Fixed n8nCallback.ts fallback paths: Claude-fail and no-intake both land at generated_locked (not pending_review)
 - [x] Updated stale $50 test description in phase67-pricing.test.ts
 - [x] Tests: 7/7 passing in phase70-draft-ready-email.test.ts, 0 TypeScript errors
+
+## Phase 71: Automated 48-Hour Draft Reminder Email
+- [x] Audit existing cron infrastructure and email queue
+- [x] Add draft_reminder_sent_at column to letter_requests table (DB migration via Supabase MCP)
+- [x] Build sendDraftReminderEmail template (urgency-focused orange, $200 CTA, hoursWaiting param)
+- [x] Build processDraftReminders() function: query letters at generated_locked > 48h, draftReminderSentAt IS NULL
+- [x] Created /api/cron/draft-reminders Express route with CRON_SECRET bearer auth
+- [x] Mark draftReminderSentAt after sending to prevent duplicate sends
+- [x] Write tests: 10/10 passing in phase71-draft-reminders.test.ts, 0 TypeScript errors
+- [x] Save checkpoint

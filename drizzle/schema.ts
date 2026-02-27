@@ -130,6 +130,8 @@ export const letterRequests = pgTable("letter_requests", {
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   priority: priorityEnum("priority").default("normal").notNull(),
   lastStatusChangedAt: timestamp("last_status_changed_at", { withTimezone: true }).defaultNow(),
+  // Tracks when the 48-hour draft-ready reminder email was sent (null = not yet sent)
+  draftReminderSentAt: timestamp("draft_reminder_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
