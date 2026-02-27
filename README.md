@@ -21,16 +21,14 @@ This document defines the exact remaining feature gaps, required schema changes,
 | [`AUDIT_REPORT.md`](AUDIT_REPORT.md) | Architecture audit report |
 | [`todo.md`](todo.md) | Full feature and bug tracking (all phases) |
 
-## Remaining Feature Gaps (from validation reference)
+## Remaining Feature Gap (from validation reference)
 
-| Gap | Description | Priority |
-|-----|-------------|----------|
-| Gap 1 | Freemium `generated_unlocked` status — first letter shows full AI draft, attorney review costs $200 | Highest complexity |
-| Gap 2 | Payment Receipts page at `/subscriber/receipts` — Stripe invoice history in-app | Isolated, low risk |
-| Gap 3 | Intake form missing fields: `language`, `communications`, `toneAndDelivery` | Lowest risk, additive |
-| Gap 4 | Mobile responsiveness fixes for Dashboard, MyLetters, Login, ReviewModal | Pure UI |
-
-**Implementation order:** Gap 3 → Gap 2 → Gap 4 → Gap 1
+| Gap | Description | Status |
+|-----|-------------|--------|
+| ~~Gap 1~~ | ~~Freemium `generated_unlocked` status — first letter shows full AI draft, attorney review costs $200~~ | ✅ Implemented |
+| ~~Gap 2~~ | ~~Payment Receipts page at `/subscriber/receipts` — Stripe invoice history in-app~~ | ✅ Implemented |
+| ~~Gap 3~~ | ~~Intake form missing fields: `language`, `communications`, `toneAndDelivery`~~ | ✅ Implemented |
+| Gap 4 | Mobile responsiveness fixes for Dashboard, MyLetters, Login, ReviewModal | Pending |
 
 ## Tech Stack
 

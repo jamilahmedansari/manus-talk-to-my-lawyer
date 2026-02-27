@@ -15,8 +15,8 @@ needs_changes → researching | drafting
 ```
 
 ### Roles (`drizzle/schema.ts` → `USER_ROLES`)
-`subscriber` | `employee` | `admin`  
-Guards: `subscriberProcedure` | `employeeProcedure` | `adminProcedure` | `attorneyProcedure`
+`subscriber` | `employee` | `attorney` | `admin`  
+Guards: `subscriberProcedure` | `employeeProcedure` | `attorneyProcedure` | `adminProcedure`
 
 ### Key Types
 - `LetterRequest` — `letterRequests` table
@@ -31,25 +31,26 @@ Guards: `subscriberProcedure` | `employeeProcedure` | `adminProcedure` | `attorn
 
 ### Route Paths (Wouter, from `client/src/App.tsx`)
 ```
-/ | /pricing | /faq | /login | /signup | /forgot-password
-/dashboard | /submit | /letters | /letters/:id | /subscriber/billing
-/review | /review/queue | /review/:id
-/employee | /employee/referrals
+/ | /pricing | /faq | /login | /signup | /forgot-password | /verify-email | /onboarding
+/dashboard | /submit | /letters | /letters/:id | /subscriber/billing | /subscriber/receipts
+/attorney | /attorney/queue | /attorney/:id
+/review | /review/queue | /review/:id        (backward-compat aliases for /attorney/*)
+/employee | /employee/referrals | /employee/earnings
 /admin | /admin/users | /admin/jobs | /admin/letters | /admin/letters/:id | /admin/affiliate
 ```
 
 ### tRPC Namespaces (from `server/routers.ts`)
-`auth` | `letters` | `review` | `admin` | `notifications` | `versions` | `billing` | `affiliate`
+`system` | `auth` | `letters` | `review` | `admin` | `notifications` | `versions` | `billing` | `affiliate`
 
 ---
 
-## Gap 1 — Freemium Status: `generated_unlocked` (Phase 22)
+## Gap 1 — Freemium Status: `generated_unlocked` (Phase 22) ✅ IMPLEMENTED
 
-**What exists now:** When a subscriber's letter finishes the AI pipeline, it gets status `generated_locked`. A blurred preview is shown by `LetterPaywall.tsx`. The `billing.freeUnlock` mutation transitions `generated_locked → pending_review` directly for first-letter-free users, skipping a new status entirely.
+**Status:** Fully implemented. All required changes below are complete in the codebase.
 
-**What is missing:** A proper `generated_unlocked` status that represents "AI draft is fully visible and readable — no payment required yet. Attorney review costs $200."
+**What exists now:** When a subscriber's first-ever letter finishes the AI pipeline, it gets status `generated_unlocked` (full AI draft visible, attorney review for $200). Returning users get `generated_locked` (blurred paywall). The `billing.sendForReview` mutation transitions `generated_unlocked → pending_review`. The `billing.freeUnlock` mutation handles the `generated_locked → pending_review` path for admin/emergency use.
 
-### Required Changes
+### Implemented Changes (for reference)
 
 **1. Schema (`drizzle/schema.ts`)**
 
@@ -114,13 +115,13 @@ Generate via `pnpm drizzle-kit generate` and apply to Supabase via MCP `apply_mi
 
 ---
 
-## Gap 2 — Payment Receipts Page (`/subscriber/receipts`)
+## Gap 2 — Payment Receipts Page (`/subscriber/receipts`) ✅ IMPLEMENTED
 
-**What exists now:** The `Billing.tsx` page shows the current subscription and links to the Stripe Customer Portal for payment history. There is no in-app receipts page.
+**Status:** Fully implemented. Route exists in `App.tsx`, `billing.receipts` tRPC query exists in `server/routers.ts`, and `Receipts.tsx` page exists.
 
-**What is missing:** A page at `/subscriber/receipts` that shows a list of all Stripe invoices/payments for the current user, with amounts, dates, and download links.
+**What exists now:** The `/subscriber/receipts` page (`client/src/pages/subscriber/Receipts.tsx`) calls `trpc.billing.receipts.useQuery()` and displays a table of Stripe invoices with date, description, amount, status, and download link. The `Billing.tsx` page links to it.
 
-### Required Changes
+### Implemented Changes (for reference)
 
 **1. tRPC query: `billing.receipts`** (new, in `server/routers.ts`)
 
@@ -170,20 +171,28 @@ In `client/src/components/shared/AppLayout.tsx`, add a "Receipts" nav item for s
 
 ---
 
-## Gap 3 — Intake Form: Missing Fields (`language`, `communications`)
+## Gap 3 — Intake Form: Missing Fields (`language`, `communications`) ✅ IMPLEMENTED
+
+**Status:** Fully implemented. All fields are present in `IntakeJson` (`shared/types.ts`), the tRPC `letters.submit` Zod schema, and the `SubmitLetter.tsx` form.
 
 **What exists now** in `IntakeJson` (from `shared/types.ts`):
 ```ts
-tonePreference?: "firm" | "moderate" | "aggressive"
-deadlineDate?: string  // present but not exposed in the SubmitLetter form
+language?: string;                    // e.g. "english", "spanish", "french"
+priorCommunication?: string;          // legacy simple field (kept for backward compat)
+deliveryMethod?: string;              // legacy simple field (kept for backward compat)
+communications?: {                    // structured prior communications
+  summary: string;
+  lastContactDate?: string;
+  method?: "email" | "phone" | "letter" | "in-person" | "other";
+};
+toneAndDelivery?: {                   // structured tone + delivery
+  tone: "firm" | "moderate" | "aggressive";
+  deliveryMethod?: "email" | "certified-mail" | "hand-delivery";
+};
+tonePreference?: "firm" | "moderate" | "aggressive"; // kept for backwards compat
 ```
 
-**What is missing from `IntakeJson` and the `SubmitLetter.tsx` 5-step form:**
-- `language` — what language to write the letter in
-- `communications` — prior communications between the parties (emails/letters already sent)
-- `toneAndDelivery` — proper structured object wrapping `tonePreference` and delivery method
-
-### Required Changes
+### Implemented Changes (for reference)
 
 **1. Update `IntakeJson` in `shared/types.ts`**
 
@@ -274,20 +283,21 @@ Add two new fields to the existing multi-step form:
 
 ## Implementation Order
 
-Start with these in order — each is independent:
+Gaps 1–3 are fully implemented. Only Gap 4 (mobile responsiveness) remains:
 
-1. **Gap 3** (Intake form fields) — lowest risk, pure additive, no schema changes needed for `language`/`communications`
-2. **Gap 2** (Payment Receipts page) — isolated new page + one tRPC query
+1. ~~**Gap 3** (Intake form fields)~~ — ✅ Done
+2. ~~**Gap 2** (Payment Receipts page)~~ — ✅ Done
 3. **Gap 4** (Mobile fixes) — pure UI, no backend changes
-4. **Gap 1** (Freemium `generated_unlocked` status) — most complex, requires schema migration, pipeline change, and multiple UI updates
+4. ~~**Gap 1** (Freemium `generated_unlocked` status)~~ — ✅ Done
 
 ---
 
 ## Testing Checklist
 
 After each gap:
-- Run `pnpm test` — all tests must stay passing (currently 153 passing)
+- Run `pnpm test` — all tests must stay passing
 - Run `pnpm tsc --noEmit` — 0 TypeScript errors
 - Verify status machine: no `ALLOWED_TRANSITIONS` regression
-- For Gap 1: submit a test letter and verify it reaches `generated_unlocked` on first submission, `generated_locked` on second submission
-- For Gap 2: verify receipts only appear after a real Stripe payment (test with Stripe test mode)
+- ~~For Gap 1: submit a test letter and verify it reaches `generated_unlocked` on first submission, `generated_locked` on second submission~~ ✅ Done
+- ~~For Gap 2: verify receipts only appear after a real Stripe payment (test with Stripe test mode)~~ ✅ Done
+- For Gap 4: test on mobile viewport (< 768px); verify card list, sticky footer, accordion on ReviewModal

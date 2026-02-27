@@ -45,24 +45,23 @@
 
 ## GAPS — Features Still Needed (Priority Order)
 
-### GAP 1: Role Split — Attorney vs Employee (HIGH PRIORITY)
-**Current:** 3 roles (subscriber, employee, admin). Employee role handles BOTH review center AND affiliate.
-**Required:** 4 roles: subscriber, employee (affiliate only), attorney (review center), admin (ops).
+### GAP 1: Role Split — Attorney vs Employee ✅ IMPLEMENTED
+**Current:** 4 roles: `subscriber`, `employee`, `attorney`, `admin`. The `attorney` role has its own `attorneyProcedure` guard and uses `/attorney/*` route paths (with backward-compat `/review/*` aliases).
+**Implemented:**
+- [x] `attorney` added to `userRoleEnum` in `drizzle/schema.ts`
+- [x] `attorneyProcedure` guard in `server/routers.ts`
+- [x] Review center routes at `/attorney/queue` and `/attorney/:id` (+ `/review/*` backward-compat aliases)
+- [x] `AttorneyDashboard` at `/attorney`
+- [x] `ProtectedRoute` handles `attorney` role in `App.tsx`
+- [x] `auth.completeOnboarding` supports `attorney` role
 
-- [ ] Add `attorney` to userRoleEnum in drizzle/schema.ts
-- [ ] Create `attorneyProcedure` guard in routers.ts
-- [ ] Move review center routes from `/employee/` to `/attorney/` path
-- [ ] Create new employee pages focused on affiliate/discount only
-- [ ] Update ProtectedRoute to handle attorney role
-- [ ] Update AppLayout nav items for attorney vs employee
-
-### GAP 2: Onboarding Role Selection (HIGH PRIORITY)
-**Current:** Signup creates user with default role. No role selection screen.
-**Required:** Post-signup screen with "I am a Client" / "I am an Employee (Affiliate)" / "I am an Attorney"
-
-- [ ] Create `/onboarding` page with role selection + profile completion (name, jurisdiction)
-- [ ] Auto-generate affiliate discount code for employee role
-- [ ] Redirect new users to onboarding before dashboard
+### GAP 2: Onboarding Role Selection ✅ IMPLEMENTED
+**Current:** Post-signup `/onboarding` page exists with role selection (Subscriber / Employee / Attorney). `auth.completeOnboarding` tRPC mutation handles role assignment and auto-generates affiliate discount codes for employees.
+**Implemented:**
+- [x] `/onboarding` route in `App.tsx` with `Onboarding` page component
+- [x] `auth.completeOnboarding` mutation (role: subscriber | employee | attorney)
+- [x] Auto-generates discount code for employee role on onboarding
+- [x] Role-specific confirmation messages
 
 ### GAP 3: Employee Affiliate System (MEDIUM PRIORITY)
 **Current:** No affiliate/discount/commission system exists at all.
@@ -81,7 +80,7 @@
 - [ ] Soft delete draft (add deletedAt column, filter in queries)
 - [ ] Resume unfinished draft / "Finish Draft" button on dashboard
 - [ ] Better processing progress modal with real step messages (researching → drafting → finalizing)
-- [ ] In-app payment receipts page (or link to Stripe portal)
+- [x] In-app payment receipts page (`/subscriber/receipts` with `billing.receipts` tRPC query) — ✅ Done
 
 ### GAP 5: Intake Form Missing Fields (MEDIUM PRIORITY)
 - [ ] Language field (dropdown: English, Spanish, French, etc.)

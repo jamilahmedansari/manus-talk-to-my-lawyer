@@ -3,7 +3,7 @@
 ## What's Already Implemented Correctly
 1. **Schema**: 8 tables (users, letter_requests, letter_versions, review_actions, workflow_jobs, research_runs, attachments, notifications) — matches spec
 2. **Status machine**: submitted → researching → drafting → pending_review → under_review → approved/rejected/needs_changes — correct
-3. **3-stage pipeline**: Perplexity (sonar-pro) → OpenAI (gpt-4o) → Claude (claude-sonnet-4-20250514) — correct
+3. **3-stage pipeline**: Perplexity (sonar-pro) → Anthropic (claude-opus-4-5) → Anthropic (claude-opus-4-5) — correct
 4. **Deterministic validators**: validateResearchPacket, parseAndValidateDraftLlmOutput, validateFinalLetter — all present
 5. **RBAC guards**: subscriberProcedure, employeeProcedure, adminProcedure — correct
 6. **Subscriber-safe detail**: getLetterRequestSafeForSubscriber never returns AI draft or internal research — correct

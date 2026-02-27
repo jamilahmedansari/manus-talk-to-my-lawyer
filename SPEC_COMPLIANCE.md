@@ -44,8 +44,8 @@ The spec requires 7 minimum indexes:
 | Index | Status |
 |---|---|
 | `letter_requests(status)` | ✅ `idx_letter_requests_status` |
-| `letter_requests(user_id)` | ✅ `idx_letter_requests_userId` |
-| `letter_requests(assigned_reviewer_id)` | ✅ `idx_letter_requests_assignedReviewerId` |
+| `letter_requests(user_id)` | ✅ `idx_letter_requests_user_id` |
+| `letter_requests(assigned_reviewer_id)` | ✅ `idx_letter_requests_assigned_reviewer` |
 | `letter_versions(letter_request_id)` | ✅ `idx_letter_versions_letterRequestId` |
 | `review_actions(letter_request_id)` | ✅ `idx_review_actions_letterRequestId` |
 | `workflow_jobs(letter_request_id, status)` | ✅ `idx_workflow_jobs_letterRequestId_status` |
@@ -59,14 +59,14 @@ The spec requires 7 minimum indexes:
 |---|---|---|
 | `subscriber` | `subscriber` | ✅ |
 | `employee` | `employee` | ✅ |
-| `attorney_admin` | **Mapped to `employee`** — attorney review center uses `employeeProcedure` which allows role `employee` or `admin` | ⚠️ Functional but not spec-exact |
+| `attorney_admin` | **Implemented as `attorney` role** — `attorneyProcedure` guard allows role `attorney` or `admin`; review center routes use `/attorney/*` | ✅ Implemented |
 | `super_admin` | **Mapped to `admin`** | ⚠️ Functional but not spec-exact |
 
-The spec defines 4 roles (`subscriber`, `employee`, `attorney_admin`, `super_admin`). The implementation uses 3 roles (`subscriber`, `employee`, `admin`). Attorneys use the `employee` role and access the review center. This is a deliberate simplification that works functionally but diverges from the spec's role naming.
+The spec defines 4 roles (`subscriber`, `employee`, `attorney_admin`, `super_admin`). The implementation uses 4 roles (`subscriber`, `employee`, `attorney`, `admin`). The `attorney` role is distinct from `employee` and has its own `attorneyProcedure` guard. The `admin` role maps to the spec's `super_admin`.
 
 ### RLS / Security — Status
 
-The application uses MySQL (not Postgres/Supabase), so Postgres Row Level Security is not applicable. Security is enforced at the tRPC procedure level via `subscriberProcedure`, `employeeProcedure`, and `adminProcedure` middleware guards. This is the correct approach for this stack.
+The application uses PostgreSQL (Supabase), so Row Level Security is enforced at both the database level (via Supabase RLS policies) and at the tRPC procedure level via `subscriberProcedure`, `employeeProcedure`, `attorneyProcedure`, and `adminProcedure` middleware guards.
 
 | Security Requirement | Status |
 |---|---|
@@ -154,7 +154,7 @@ The multi-step form (5 steps) captures: letterType, tonePreference, jurisdiction
 | Requirement | Status |
 |---|---|
 | Stage 1: Perplexity research with jurisdiction-aware, source-backed output | ✅ `runResearchStage` uses Perplexity sonar model |
-| Stage 2: OpenAI drafting using intake + validated research packet only | ✅ `runDraftingStage` uses GPT-4o via Forge proxy |
+| Stage 2: Anthropic drafting using intake + validated research packet only | ✅ `runDraftingStage` uses Anthropic claude-opus-4-5 |
 | Strict JSON research packet with all required fields | ✅ Validated by `validateResearchPacket` |
 | Deterministic research validation gate before drafting | ✅ Pipeline stops on invalid research |
 | Draft parser: strip code fences, extract first JSON, validate exact keys | ✅ `parseAndValidateDraftLlmOutput` |
@@ -178,7 +178,7 @@ This is an **intentional product decision** (paywall monetization) that diverges
 | Page | Status |
 |---|---|
 | New Letter Request (multi-step form) | ✅ 5-step form at `/submit` |
-| Attachment upload in form | ❌ **Missing** — `uploadAttachment` mutation exists but no UI in SubmitLetter |
+| Attachment upload in form | ✅ `uploadAttachment` mutation wired to S3 via `storagePut`; UI in SubmitLetter |
 | My Letters (real data, status badges) | ✅ `/my-letters` with status filters |
 | Letter Detail (status timeline, intake summary, user-visible notes) | ✅ `/letters/:id` |
 | Letter Detail — final approved letter only when `approved` | ✅ Enforced in both frontend and backend |
@@ -190,7 +190,7 @@ This is an **intentional product decision** (paywall monetization) that diverges
 
 | Page | Status |
 |---|---|
-| Review Queue (pending_review / under_review / needs_changes) | ✅ `/employee/queue` |
+| Review Queue (pending_review / under_review / needs_changes) | ✅ `/attorney/queue` (also aliased as `/review/queue`) |
 | Review Detail — intake panel | ✅ |
 | Review Detail — attachments panel | ✅ |
 | Review Detail — AI draft panel + editor | ✅ |
@@ -263,15 +263,17 @@ The following items are confirmed missing and should be implemented in the next 
 | Priority | Gap | Impact | Effort |
 |---|---|---|---|
 | ~~**P1 — High**~~ | ~~7 missing database indexes~~ | ~~Performance at scale~~ | ✅ Done — migration 0004 |
-| **P1 — High** | Attachment upload UI in SubmitLetter form | Subscribers cannot attach evidence | Medium |
-| **P2 — Medium** | `language` field in intake normalizer + form | Multi-language support | Low |
-| **P2 — Medium** | `deadlines` field in intake normalizer + form | Attorney needs deadline context | Low |
-| **P2 — Medium** | `communications` field in intake normalizer + form | Prior contact history for demand letters | Low |
-| **P2 — Medium** | `toneAndDelivery` as proper intake object (not just `tonePreference`) | Richer drafting context | Low |
-| **P3 — Low** | `research_sources` as a separate table | Better source querying/display | Medium |
-| **P3 — Low** | Role names: `attorney_admin` / `super_admin` vs `employee` / `admin` | Spec alignment | Medium — requires migration + RBAC update |
-| **P3 — Low** | Payment Receipts page (`/subscriber/receipts`) | Subscriber billing history | Medium |
+| ~~**P1 — High**~~ | ~~Attachment upload UI in SubmitLetter form~~ | ~~Subscribers cannot attach evidence~~ | ✅ Done |
+| ~~**P2 — Medium**~~ | ~~`language` field in intake normalizer + form~~ | ~~Multi-language support~~ | ✅ Done — in `IntakeJson` |
+| ~~**P2 — Medium**~~ | ~~`deadlines` field in intake normalizer + form~~ | ~~Attorney needs deadline context~~ | ✅ Done — `deadlineDate` in `IntakeJson` |
+| ~~**P2 — Medium**~~ | ~~`communications` field in intake normalizer + form~~ | ~~Prior contact history~~ | ✅ Done — in `IntakeJson` |
+| ~~**P2 — Medium**~~ | ~~`toneAndDelivery` as proper intake object~~ | ~~Richer drafting context~~ | ✅ Done — in `IntakeJson` |
+| ~~**P3 — Low**~~ | ~~Role names: `attorney_admin` vs `employee`~~ | ~~Spec alignment~~ | ✅ Done — `attorney` role in schema and `attorneyProcedure` guard |
+| ~~**P3 — Low**~~ | ~~Payment Receipts page (`/subscriber/receipts`)~~ | ~~Subscriber billing history~~ | ✅ Done — route + `billing.receipts` tRPC procedure |
+| ~~**P3 — Low**~~ | ~~`generated_unlocked` freemium status~~ | ~~First-letter-free path~~ | ✅ Done — in schema, types, pipeline, routers |
+| **P3 — Low** | `research_sources` as a separate table | Better source querying/display | Medium — deferred (acceptable per spec) |
 | **P3 — Low** | Subscriber Dashboard stats widget | UX improvement | Low |
+| **P4 — Low** | Mobile responsiveness fixes (Dashboard, MyLetters, Login, ReviewModal) | Mobile UX | Medium |
 
 ---
 
