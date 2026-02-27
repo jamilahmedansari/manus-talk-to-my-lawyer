@@ -894,3 +894,18 @@
 - [ ] Quick-action buttons: View Draft, Pay for Review ($200), Download PDF (approved only)
 - [ ] Wire /letters route and add nav entry to subscriber dashboard
 - [ ] Write tests and save checkpoint
+
+## Phase 73: Align n8n Workflow with 3-Stage Pipeline
+
+- [x] Audited current n8n workflow (Pr5n5JlkgBKcwZPe9z678) via n8n REST API — identified 5 gaps
+- [x] Built aligned workflow JSON: 16 nodes, 3 stages matching in-app pipeline
+  - Stage 1: GPT-4o + Perplexity tool → structured ResearchPacket JSON (full schema)
+  - Stage 2: Claude Sonnet 4 → structured DraftOutput JSON (draftLetter, attorneyReviewSummary, openQuestions, riskFlags)
+  - Stage 3: Claude Sonnet 4 → final polished letter text (assembly)
+  - Parse nodes between stages for robust JSON extraction with fallbacks
+  - Callback uses dynamic callbackUrl from incoming payload + structured body
+- [x] Deployed via n8n API: deactivate → PUT update → activate (workflow Pr5n5JlkgBKcwZPe9z678)
+- [x] Rewrote n8nCallback.ts: detects aligned vs legacy payloads, skips local assembly for aligned, stores research version separately
+- [x] Same system/user prompts as pipeline.ts (research, drafting, assembly)
+- [x] Tests: 21/21 passing in phase73-n8n-alignment.test.ts, 0 TypeScript errors
+- [x] Save checkpoint

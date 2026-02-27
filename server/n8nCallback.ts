@@ -1,8 +1,17 @@
 /**
- * n8n Pipeline Callback Handler
+ * n8n Pipeline Callback Handler (Aligned 3-Stage)
  *
- * When the n8n workflow completes, it POSTs results to /api/pipeline/n8n-callback.
- * This handler validates the secret, processes the results, and updates the letter status.
+ * When the aligned n8n workflow completes, it POSTs structured results to
+ * /api/pipeline/n8n-callback. The payload now mirrors the in-app pipeline:
+ *
+ *   - researchPacket: Full ResearchPacket JSON from Stage 1
+ *   - draftOutput:    Structured DraftOutput JSON from Stage 2
+ *   - assembledLetter: Final polished letter text from Stage 3
+ *
+ * If the n8n workflow already ran all 3 stages successfully, we skip the
+ * local assembly stage and store the results directly. If the n8n workflow
+ * only produced a flat draftContent (legacy format), we fall back to running
+ * the local Claude assembly stage.
  */
 
 import type { Express, Request, Response } from "express";
@@ -12,17 +21,25 @@ import {
   updateLetterVersionPointers,
   logReviewAction,
   getLetterRequestById,
+  getUserById,
 } from "./db";
 import { runAssemblyStage } from "./pipeline";
-import type { IntakeJson, ResearchPacket } from "../shared/types";
+import type { IntakeJson, ResearchPacket, DraftOutput } from "../shared/types";
 import { sendLetterReadyEmail } from "./email";
-import { getUserById } from "./db";
 
 interface N8nCallbackPayload {
   letterId: number;
   success: boolean;
+  // ── Aligned 3-stage structured data ──
+  researchPacket?: ResearchPacket;
+  draftOutput?: DraftOutput;
+  assembledLetter?: string;
+  // ── Legacy flat fields (backward compat) ──
   researchOutput?: string;
   draftContent?: string;
+  // ── Metadata ──
+  provider?: string;
+  stages?: string[];
   error?: string;
 }
 
@@ -39,21 +56,40 @@ export function registerN8nCallbackRoute(app: Express): void {
     }
 
     const payload = req.body as N8nCallbackPayload;
-    const { letterId, success, researchOutput, draftContent, error } = payload;
+    const {
+      letterId,
+      success,
+      researchPacket,
+      draftOutput,
+      assembledLetter,
+      researchOutput,
+      draftContent,
+      provider,
+      stages,
+      error,
+    } = payload;
 
     if (!letterId) {
       res.status(400).json({ error: "letterId is required" });
       return;
     }
 
-    console.log(`[n8n Callback] Received for letter #${letterId}, success=${success}`);
+    const isAligned = !!(researchPacket && draftOutput && assembledLetter);
+    const providerTag = provider ?? (isAligned ? "n8n-3stage" : "n8n-legacy");
+    console.log(
+      `[n8n Callback] Received for letter #${letterId}, success=${success}, ` +
+      `provider=${providerTag}, aligned=${isAligned}, stages=${(stages ?? []).join(",")}`
+    );
 
     // Acknowledge immediately
-    res.json({ received: true, letterId });
+    res.json({ received: true, letterId, provider: providerTag });
 
     // Process asynchronously
     try {
-      if (!success || !draftContent) {
+      // Determine the effective draft content
+      const effectiveDraft = assembledLetter || draftOutput?.draftLetter || draftContent;
+
+      if (!success || !effectiveDraft) {
         const errMsg = error ?? "n8n pipeline returned no content";
         console.error(`[n8n Callback] Pipeline failed for letter #${letterId}: ${errMsg}`);
         await updateLetterStatus(letterId, "submitted"); // revert to allow retry
@@ -61,102 +97,154 @@ export function registerN8nCallbackRoute(app: Express): void {
           letterRequestId: letterId,
           actorType: "system",
           action: "pipeline_failed",
-          noteText: `n8n pipeline failed: ${errMsg}`,
+          noteText: `n8n pipeline failed (${providerTag}): ${errMsg}`,
           fromStatus: "researching",
           toStatus: "submitted",
         });
         return;
       }
 
-      // Store the n8n draft as an AI draft version
+      // ── Store the AI draft version ──────────────────────────────
       const draftVersion = await createLetterVersion({
         letterRequestId: letterId,
         versionType: "ai_draft",
-        content: draftContent,
+        content: effectiveDraft,
         createdByType: "system",
         metadataJson: {
-          provider: "n8n",
-          stage: "n8n-pipeline",
-          researchOutput: researchOutput ? researchOutput.substring(0, 2000) : undefined,
+          provider: providerTag,
+          stage: isAligned ? "n8n-assembly" : "n8n-pipeline",
+          researchSummary: researchPacket?.researchSummary
+            ?? researchOutput?.substring(0, 2000)
+            ?? undefined,
+          attorneyReviewSummary: draftOutput?.attorneyReviewSummary ?? undefined,
+          openQuestions: draftOutput?.openQuestions ?? undefined,
+          riskFlags: draftOutput?.riskFlags ?? undefined,
+          stages: stages ?? undefined,
         },
       });
       const draftVersionId = (draftVersion as any)?.insertId ?? 0;
       await updateLetterVersionPointers(letterId, { currentAiDraftVersionId: draftVersionId });
 
-      // Now run Stage 3: Claude final assembly to polish the n8n output
-      const letter = await getLetterRequestById(letterId);
-      if (letter?.intakeJson) {
+      // ── Store research version if we have structured research ──
+      if (researchPacket?.researchSummary) {
         try {
-          const intake = letter.intakeJson as IntakeJson;
-
-          // Build a minimal research packet from n8n's research output
-          const research: ResearchPacket = {
-            researchSummary: researchOutput ?? "Research completed by n8n Perplexity agent.",
-            jurisdictionProfile: {
-              country: intake.jurisdiction?.country ?? "US",
-              stateProvince: intake.jurisdiction?.state ?? "",
-              city: intake.jurisdiction?.city ?? "",
-              authorityHierarchy: ["Federal", "State", "Local"],
-            },
-            issuesIdentified: [intake.matter?.description?.substring(0, 200) ?? "Legal matter"],
-            applicableRules: [{
-              ruleTitle: "n8n Research Findings",
-              ruleType: "statute",
-              jurisdiction: intake.jurisdiction?.state ?? "",
-              citationText: "See research summary",
-              sectionOrRule: "N/A",
-              summary: (researchOutput ?? "").substring(0, 500),
-              sourceUrl: "",
-              sourceTitle: "n8n Perplexity Research",
-              relevance: "Primary research from n8n pipeline",
-              confidence: "medium" as const,
-            }],
-            localJurisdictionElements: [],
-            factualDataNeeded: [],
-            openQuestions: [],
-            riskFlags: [],
-            draftingConstraints: [],
-          };
-
-          const draftOutput = {
-            draftLetter: draftContent,
-            attorneyReviewSummary: "Draft generated by n8n pipeline (Perplexity + GPT-4o). Please review carefully.",
-            openQuestions: [],
-            riskFlags: [],
-          };
-
-          // Stage 3: Claude polishes the n8n draft
-          await runAssemblyStage(letterId, intake, research, draftOutput);
-          console.log(`[n8n Callback] Stage 3 Claude assembly complete for letter #${letterId}`);
-        } catch (assemblyErr) {
-          const assemblyMsg = assemblyErr instanceof Error ? assemblyErr.message : String(assemblyErr);
-          console.warn(`[n8n Callback] Stage 3 assembly failed for letter #${letterId}: ${assemblyMsg}. Using n8n draft as final.`);
-
-          // If Claude fails, use the n8n draft directly — still land at generated_locked so subscriber pays to unlock
-          await updateLetterStatus(letterId, "generated_locked");
-          await logReviewAction({
+          const researchVersion = await createLetterVersion({
             letterRequestId: letterId,
-            actorType: "system",
-            action: "ai_pipeline_completed",
-            noteText: `n8n pipeline complete (Perplexity + GPT-4o). Claude assembly skipped. Draft ready — awaiting subscriber payment for attorney review.`,
-            fromStatus: "drafting",
-            toStatus: "generated_locked",
+            versionType: "ai_draft",
+            content: researchPacket.researchSummary,
+            createdByType: "system",
+            metadataJson: {
+              provider: providerTag,
+              stage: "research",
+              researchPacket: {
+                jurisdictionProfile: researchPacket.jurisdictionProfile,
+                issuesIdentified: researchPacket.issuesIdentified,
+                applicableRulesCount: researchPacket.applicableRules?.length ?? 0,
+                riskFlags: researchPacket.riskFlags,
+                draftingConstraints: researchPacket.draftingConstraints,
+                // n8n may send extended fields not in the TS interface — store them as-is
+                ...((researchPacket as any).recentCasePrecedents ? { recentCasePrecedentsCount: (researchPacket as any).recentCasePrecedents.length } : {}),
+                ...((researchPacket as any).statuteOfLimitations ? { statuteOfLimitations: (researchPacket as any).statuteOfLimitations } : {}),
+                ...((researchPacket as any).preSuitRequirements ? { preSuitRequirements: (researchPacket as any).preSuitRequirements } : {}),
+              },
+            },
           });
+          console.log(`[n8n Callback] Research version stored for letter #${letterId}`);
+        } catch (researchErr) {
+          console.warn(`[n8n Callback] Failed to store research version for #${letterId}:`, researchErr);
         }
-      } else {
-        // No intake found — still land at generated_locked so subscriber pays to unlock
+      }
+
+      // ── Decide: skip local assembly or run it ─────────────────
+      if (isAligned) {
+        // n8n already ran all 3 stages — skip local assembly, go straight to generated_locked
+        console.log(`[n8n Callback] Aligned 3-stage complete for letter #${letterId}. Skipping local assembly.`);
         await updateLetterStatus(letterId, "generated_locked");
         await logReviewAction({
           letterRequestId: letterId,
           actorType: "system",
           action: "ai_pipeline_completed",
-          noteText: `n8n pipeline complete. Draft ready — awaiting subscriber payment for attorney review.`,
+          noteText: `n8n aligned 3-stage pipeline complete (${(stages ?? []).join(" → ")}). Draft ready — awaiting subscriber payment for attorney review.`,
           fromStatus: "drafting",
           toStatus: "generated_locked",
         });
+      } else {
+        // Legacy n8n output — run local Claude assembly to polish
+        console.log(`[n8n Callback] Legacy n8n output for letter #${letterId}. Running local assembly stage.`);
+        const letter = await getLetterRequestById(letterId);
+        if (letter?.intakeJson) {
+          try {
+            const intake = letter.intakeJson as IntakeJson;
+
+            // Build a research packet from whatever we have
+            const research: ResearchPacket = researchPacket ?? {
+              researchSummary: researchOutput ?? "Research completed by n8n Perplexity agent.",
+              jurisdictionProfile: {
+                country: intake.jurisdiction?.country ?? "US",
+                stateProvince: intake.jurisdiction?.state ?? "",
+                city: intake.jurisdiction?.city ?? "",
+                authorityHierarchy: ["Federal", "State", "Local"],
+              },
+              issuesIdentified: [intake.matter?.description?.substring(0, 200) ?? "Legal matter"],
+              applicableRules: [{
+                ruleTitle: "n8n Research Findings",
+                ruleType: "statute",
+                jurisdiction: intake.jurisdiction?.state ?? "",
+                citationText: "See research summary",
+                sectionOrRule: "N/A",
+                summary: (researchOutput ?? "").substring(0, 500),
+                sourceUrl: "",
+                sourceTitle: "n8n Perplexity Research",
+                relevance: "Primary research from n8n pipeline",
+                confidence: "medium" as const,
+              }],
+              localJurisdictionElements: [],
+              factualDataNeeded: [],
+              openQuestions: [],
+              riskFlags: [],
+              draftingConstraints: [],
+            };
+
+            const draft: DraftOutput = draftOutput ?? {
+              draftLetter: draftContent ?? "",
+              attorneyReviewSummary: "Draft generated by n8n pipeline (Perplexity + GPT-4o). Please review carefully.",
+              openQuestions: [],
+              riskFlags: [],
+            };
+
+            // Stage 3: Claude polishes the n8n draft
+            await runAssemblyStage(letterId, intake, research, draft);
+            console.log(`[n8n Callback] Local assembly complete for letter #${letterId}`);
+          } catch (assemblyErr) {
+            const assemblyMsg = assemblyErr instanceof Error ? assemblyErr.message : String(assemblyErr);
+            console.warn(`[n8n Callback] Local assembly failed for letter #${letterId}: ${assemblyMsg}. Using n8n draft as final.`);
+
+            // If Claude fails, use the n8n draft directly — still land at generated_locked
+            await updateLetterStatus(letterId, "generated_locked");
+            await logReviewAction({
+              letterRequestId: letterId,
+              actorType: "system",
+              action: "ai_pipeline_completed",
+              noteText: `n8n pipeline complete (${providerTag}). Local assembly skipped. Draft ready — awaiting subscriber payment for attorney review.`,
+              fromStatus: "drafting",
+              toStatus: "generated_locked",
+            });
+          }
+        } else {
+          // No intake found — still land at generated_locked
+          await updateLetterStatus(letterId, "generated_locked");
+          await logReviewAction({
+            letterRequestId: letterId,
+            actorType: "system",
+            action: "ai_pipeline_completed",
+            noteText: `n8n pipeline complete (${providerTag}). Draft ready — awaiting subscriber payment for attorney review.`,
+            fromStatus: "drafting",
+            toStatus: "generated_locked",
+          });
+        }
       }
 
-      // Send "letter ready" email to subscriber (non-blocking)
+      // ── Send "letter ready" email to subscriber (non-blocking) ──
       try {
         const letterRecord = await getLetterRequestById(letterId);
         if (letterRecord) {
@@ -181,7 +269,7 @@ export function registerN8nCallbackRoute(app: Express): void {
         console.error(`[n8n Callback] Failed to send letter-ready email for #${letterId}:`, emailErr);
       }
 
-      console.log(`[n8n Callback] Processing complete for letter #${letterId}`);
+      console.log(`[n8n Callback] Processing complete for letter #${letterId} (${providerTag})`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[n8n Callback] Error processing callback for letter #${letterId}:`, msg);
