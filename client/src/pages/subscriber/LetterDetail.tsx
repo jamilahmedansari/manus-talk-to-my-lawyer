@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Download, MessageSquare, ArrowLeft, CheckCircle, AlertCircle, Send, Clock, Copy, Trash2 } from "lucide-react";
+import { FileText, Download, MessageSquare, ArrowLeft, CheckCircle, AlertCircle, Clock, Copy, Trash2 } from "lucide-react";
 import { Link, useParams, useSearch } from "wouter";
 import { LETTER_TYPE_CONFIG } from "../../../../shared/types";
 import { useState, useEffect } from "react";
@@ -15,88 +15,6 @@ import { useLetterRealtime } from "@/hooks/useLetterRealtime";
 
 // Statuses that require active polling (AI pipeline in progress or awaiting action)
 const POLLING_STATUSES = ["submitted", "researching", "drafting", "pending_review", "under_review"];
-
-/**
- * First-letter-free view: shows the full AI draft with a "Send for Attorney Review" CTA.
- * The subscriber can read the entire letter before deciding to send it for review.
- */
-function GeneratedUnlockedView({ letterId, draftContent }: { letterId: number; draftContent: string }) {
-  const utils = trpc.useUtils();
-  const sendForReview = trpc.billing.sendForReview.useMutation({
-    onSuccess: () => {
-      toast.success("Letter submitted for review", {
-        description: "You'll receive an email when the review is complete.",
-        duration: 6000,
-      });
-      utils.letters.detail.invalidate({ id: letterId });
-    },
-    onError: (err: any) => toast.error("Submission failed", { description: err.message ?? "Please try again or contact support." }),
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* Success banner */}
-      <Card className="border-green-200 bg-green-50/30">
-        <CardContent className="p-5">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-green-800">Your First Letter Is Free!</p>
-              <p className="text-sm text-green-700 mt-1">
-                Read your AI-generated draft below. When you're ready, send it for attorney review at no charge.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Full AI draft */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            AI-Generated Draft
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-muted/30 border border-border rounded-lg p-5">
-            <pre className="text-sm text-foreground whitespace-pre-wrap font-mono leading-relaxed">
-              {draftContent || "Draft content is loading..."}
-            </pre>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Send for Review CTA */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Ready for Attorney Review?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                A licensed attorney will review, edit, and approve your letter before it's finalized.
-              </p>
-            </div>
-            <Button
-              onClick={() => sendForReview.mutate({ letterId })}
-              disabled={sendForReview.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto"
-            >
-              {sendForReview.isPending ? (
-                "Sending..."
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Send for Attorney Review — Free
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 export default function LetterDetail() {
   const params = useParams<{ id: string }>();
@@ -144,7 +62,6 @@ export default function LetterDetail() {
         researching: "Researching your legal situation...",
         drafting: "Drafting your letter...",
         generated_locked: "Your letter draft is ready!",
-        generated_unlocked: "Your first free letter draft is ready to read!",
         pending_review: "Sent to attorney review.",
         under_review: "An attorney is reviewing your letter.",
         approved: "Your letter has been approved!",
@@ -302,7 +219,6 @@ export default function LetterDetail() {
   const userVisibleActions = actions?.filter((a) => a.noteVisibility === "user_visible" && a.noteText);
   const isPolling = POLLING_STATUSES.includes(letter.status);
   const isGeneratedLocked = letter.status === "generated_locked";
-  const isGeneratedUnlocked = letter.status === "generated_unlocked";
 
   return (
     <AppLayout breadcrumb={[{ label: "My Letters", href: "/letters" }, { label: letter.subject }]}>
@@ -373,11 +289,8 @@ export default function LetterDetail() {
           />
         )}
 
-        {/* ── FIRST-LETTER-FREE: generated_unlocked — full draft visible + Send for Review CTA ── */}
-        {isGeneratedUnlocked && <GeneratedUnlockedView letterId={letterId} draftContent={aiDraftVersion?.content ?? ""} />}
-
         {/* Attorney Notes (user-visible only) — shown for all non-locked statuses */}
-        {!isGeneratedLocked && !isGeneratedUnlocked && userVisibleActions && userVisibleActions.length > 0 && (
+        {!isGeneratedLocked && userVisibleActions && userVisibleActions.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">

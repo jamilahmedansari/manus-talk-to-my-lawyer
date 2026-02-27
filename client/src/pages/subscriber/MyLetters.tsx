@@ -2,11 +2,12 @@ import AppLayout from "@/components/shared/AppLayout";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, PlusCircle, Search, ArrowRight, Lock, CheckCircle } from "lucide-react";
+import { FileText, PlusCircle, Search, ArrowRight, Lock, CheckCircle, Download } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { LETTER_TYPE_CONFIG } from "../../../../shared/types";
 
 // Statuses where the list should auto-refresh (pipeline in progress)
@@ -23,6 +24,11 @@ export default function MyLetters() {
   });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const approvedLetters = useMemo(
+    () => (letters ?? []).filter((l) => l.status === "approved"),
+    [letters]
+  );
 
   const filtered = (letters ?? []).filter((l) => {
     const matchSearch = l.subject.toLowerCase().includes(search.toLowerCase());
@@ -42,6 +48,48 @@ export default function MyLetters() {
             <Link href="/submit"><PlusCircle className="w-4 h-4 mr-2" />New Letter</Link>
           </Button>
         </div>
+
+        {/* Approved Letters Hero Section */}
+        {!isLoading && approvedLetters.length > 0 && (
+          <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-green-800">
+                    {approvedLetters.length} Approved {approvedLetters.length === 1 ? "Letter" : "Letters"} Ready to Download
+                  </p>
+                  <p className="text-xs text-green-600">Attorney-reviewed and approved — ready for use</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {approvedLetters.slice(0, 3).map((letter) => (
+                  <Link key={letter.id} href={`/letters/${letter.id}`}>
+                    <div className="flex items-center justify-between bg-white border border-green-200 rounded-lg px-3 py-2 hover:border-green-400 transition-colors cursor-pointer">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground truncate">{letter.subject}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <span className="text-xs text-muted-foreground hidden sm:block">
+                          {new Date(letter.createdAt).toLocaleDateString()}
+                        </span>
+                        <Download className="w-3.5 h-3.5 text-green-600" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+                {approvedLetters.length > 3 && (
+                  <p className="text-xs text-green-600 text-center pt-1">
+                    +{approvedLetters.length - 3} more — use the filter below to view all approved letters
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -67,7 +115,6 @@ export default function MyLetters() {
               <SelectItem value="under_review">Under Review</SelectItem>
               <SelectItem value="needs_changes">Needs Changes</SelectItem>
               <SelectItem value="generated_locked">Ready to Unlock</SelectItem>
-              <SelectItem value="generated_unlocked">Draft Ready (Free)</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
@@ -105,8 +152,8 @@ export default function MyLetters() {
                     <div className={`bg-card border rounded-xl p-4 hover:shadow-sm transition-all cursor-pointer ${
                       letter.status === "generated_locked"
                         ? "border-amber-300 hover:border-amber-400 bg-amber-50/30"
-                        : letter.status === "generated_unlocked"
-                        ? "border-green-300 hover:border-green-400 bg-green-50/30"
+                        : letter.status === "approved"
+                        ? "border-green-200 hover:border-green-400 bg-green-50/20"
                         : "border-border hover:border-primary/40"
                     }`}>
                   <div className="flex items-start gap-4">
@@ -130,10 +177,10 @@ export default function MyLetters() {
                             Unlock for Review
                           </span>
                         )}
-                        {letter.status === "generated_unlocked" && (
+                        {letter.status === "approved" && (
                           <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            Free — Send for Review
+                            <Download className="w-3 h-3" />
+                            Download Available
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground">

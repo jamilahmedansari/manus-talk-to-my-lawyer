@@ -38,7 +38,7 @@ const FAQ_CATEGORIES = [
     items: [
       {
         q: "How much does a letter cost?",
-        a: "A single attorney-reviewed legal letter costs $200. This covers AI research and drafting, licensed attorney review and editing, and a final approved PDF you can download and use. We also offer subscription plans for users who need multiple letters per month.",
+        a: "Each attorney-reviewed legal letter costs $200 — a one-time payment per letter. This covers AI-powered legal research, professional letter drafting, licensed attorney review and editing, attorney approval, and a downloadable PDF of the final letter. No subscription required.",
       },
       {
         q: "What does the $200 fee include?",
@@ -46,7 +46,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Do you offer subscription plans?",
-        a: "Yes. We offer monthly and annual subscription plans for users who need multiple letters. Subscribers get a set number of letters per billing period at a reduced per-letter cost. Visit our Pricing page for current plan details.",
+        a: "We currently offer a pay-per-letter model at $200 per letter — no subscription required. This keeps things simple: you pay only when you need a letter, with no recurring charges.",
       },
       {
         q: "What payment methods do you accept?",
@@ -71,7 +71,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Can I see the AI draft before paying?",
-        a: "Yes. After the AI completes drafting, you can preview a partially blurred version of your letter. To unlock the full letter and submit it for attorney review, you pay the $200 fee at that point.",
+        a: "Yes. After the AI completes drafting, you can preview a partially blurred version of your letter on your dashboard. To unlock the full draft and submit it for attorney review, you pay the $200 fee at that point.",
       },
       {
         q: "What if the attorney requests changes?",

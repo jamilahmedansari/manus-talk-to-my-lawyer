@@ -59,8 +59,6 @@ import {
   sendNeedsChangesEmail,
   sendNewReviewNeededEmail,
   sendLetterSubmissionEmail,
-  sendLetterReadyEmail,
-  sendLetterUnlockedEmail,
   sendStatusUpdateEmail,
 } from "./email";
 import { runFullPipeline, retryPipelineFromStage } from "./pipeline";
@@ -72,7 +70,6 @@ import {
   createLetterUnlockCheckout,
   getUserSubscription,
   checkLetterSubmissionAllowed,
-  hasActiveRecurringSubscription,
 } from "./stripe";
 
 // ─── Role Guards ──────────────────────────────────────────────────────────────
@@ -749,150 +746,28 @@ export const appRouter = router({
       });
       return { url };
     }),
-    // ─── Check paywall status: free | pay_per_letter | subscribed ───
-    /**
-     * Returns the paywall state for the current user:
-     *   - "free"           — first letter, no prior unlocked letters
-     *   - "subscribed"     — active monthly/annual plan (bypass paywall entirely)
-     *   - "pay_per_letter" — free letter already used, no active recurring subscription
-     */
-    checkPaywallStatus: subscriberProcedure.query(async ({ ctx }) => {
-      // 1. Check for active monthly/annual subscription first
-      const isSubscribed = await hasActiveRecurringSubscription(ctx.user.id);
-      if (isSubscribed) return { state: "subscribed" as const, eligible: false };
-      // 2. Count letters that moved past generated_locked (i.e., were unlocked/paid/free)
-      const db = await (await import("./db")).getDb();
-      if (!db) return { state: "pay_per_letter" as const, eligible: false };
-      const { letterRequests } = await import("../drizzle/schema");
-      const { eq, and, notInArray } = await import("drizzle-orm");
-      const unlockedLetters = await db.select({ id: letterRequests.id })
-        .from(letterRequests)
-        .where(and(
-          eq(letterRequests.userId, ctx.user.id),
-          notInArray(letterRequests.status, ["submitted", "researching", "drafting", "generated_locked"])
-        ));
-      if (unlockedLetters.length === 0) return { state: "free" as const, eligible: true };
-      return { state: "pay_per_letter" as const, eligible: false };
-    }),
-    // ─── Legacy alias: kept for backward compat (LetterPaywall still calls this) ───
-    checkFirstLetterFree: subscriberProcedure.query(async ({ ctx }) => {
-      const isSubscribed = await hasActiveRecurringSubscription(ctx.user.id);
-      if (isSubscribed) return { eligible: false };
-      const db = await (await import("./db")).getDb();
-      if (!db) return { eligible: false };
-      const { letterRequests } = await import("../drizzle/schema");
-      const { eq, and, notInArray } = await import("drizzle-orm");
-      const paidLetters = await db.select({ id: letterRequests.id })
-        .from(letterRequests)
-        .where(and(
-          eq(letterRequests.userId, ctx.user.id),
-          notInArray(letterRequests.status, ["submitted", "researching", "drafting", "generated_locked"])
-        ));
-      return { eligible: paidLetters.length === 0 };
+    // ─── Check paywall status: always pay_per_letter (free-letter promo disabled) ───
+    checkPaywallStatus: subscriberProcedure.query(async () => {
+      return { state: "pay_per_letter" as const };
     }),
 
-    // ─── Free unlock: first letter goes directly to pending_review ───
+    // ─── Disabled: free-letter promo removed ───
+    checkFirstLetterFree: subscriberProcedure.query(async () => {
+      return { eligible: false };
+    }),
+
+    // ─── Disabled: free unlock promo removed — all letters require $200 payment ───
     freeUnlock: subscriberProcedure
       .input(z.object({ letterId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        const letter = await getLetterRequestSafeForSubscriber(input.letterId, ctx.user.id);
-        if (!letter) throw new TRPCError({ code: "NOT_FOUND", message: "Letter not found" });
-        if (letter.status !== "generated_locked")
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Letter is not in generated_locked status" });
-
-        // Verify they actually qualify for free first letter
-        const db = await (await import("./db")).getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { letterRequests } = await import("../drizzle/schema");
-        const { eq: eqOp, and: andOp, notInArray: notInOp } = await import("drizzle-orm");
-        const paidLetters = await db.select({ id: letterRequests.id })
-          .from(letterRequests)
-          .where(andOp(
-            eqOp(letterRequests.userId, ctx.user.id),
-            notInOp(letterRequests.status, ["submitted", "researching", "drafting", "generated_locked"])
-          ));
-        if (paidLetters.length > 0)
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Free first letter has already been used." });
-
-        // Transition to pending_review
-        await updateLetterStatus(input.letterId, "pending_review");
-        await logReviewAction({
-          letterRequestId: input.letterId,
-          reviewerId: ctx.user.id,
-          actorType: "subscriber",
-          action: "free_unlock",
-          noteText: "First letter — free attorney review (promotional)",
-          noteVisibility: "internal",
-          fromStatus: "generated_locked",
-          toStatus: "pending_review",
-        });
-
-        // Send notification emails
-        try {
-          await sendLetterUnlockedEmail({
-            to: ctx.user.email ?? "",
-            name: ctx.user.name ?? "Subscriber",
-            subject: letter.subject,
-            letterId: input.letterId,
-            appUrl: getAppUrl(ctx.req),
-          });
-          await sendNewReviewNeededEmail({
-            to: "", // Will use admin email from config
-            name: "Attorney Team",
-            letterSubject: letter.subject,
-            letterId: input.letterId,
-            letterType: letter.letterType,
-            jurisdiction: letter.jurisdictionState ?? "Unknown",
-            appUrl: getAppUrl(ctx.req),
-          });
-        } catch (e) { console.error("[freeUnlock] Email error:", e); }
-
-        return { success: true, free: true };
+      .mutation(async () => {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Free unlock is no longer available. Please pay to unlock your letter." });
       }),
 
-    // ─── Send for Review: generated_unlocked → pending_review (first-letter-free path) ───
+    // ─── Disabled: generated_unlocked path removed from pipeline ───
     sendForReview: subscriberProcedure
       .input(z.object({ letterId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        const letter = await getLetterRequestSafeForSubscriber(input.letterId, ctx.user.id);
-        if (!letter) throw new TRPCError({ code: "NOT_FOUND", message: "Letter not found" });
-        if (letter.status !== "generated_unlocked")
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Letter is not in generated_unlocked status" });
-
-        // Transition to pending_review
-        await updateLetterStatus(input.letterId, "pending_review");
-        await logReviewAction({
-          letterRequestId: input.letterId,
-          reviewerId: ctx.user.id,
-          actorType: "subscriber",
-          action: "subscriber_sent_for_review",
-          noteText: "Subscriber sent their first free letter for attorney review.",
-          noteVisibility: "user_visible",
-          fromStatus: "generated_unlocked",
-          toStatus: "pending_review",
-        });
-
-        // Send notification emails
-        try {
-          await sendLetterUnlockedEmail({
-            to: ctx.user.email ?? "",
-            name: ctx.user.name ?? "Subscriber",
-            subject: letter.subject,
-            letterId: input.letterId,
-            appUrl: getAppUrl(ctx.req),
-          });
-          await sendNewReviewNeededEmail({
-            to: "",
-            name: "Attorney Team",
-            letterSubject: letter.subject,
-            letterId: input.letterId,
-            letterType: letter.letterType,
-            jurisdiction: letter.jurisdictionState ?? "Unknown",
-            appUrl: getAppUrl(ctx.req),
-          });
-        } catch (e) { console.error("[sendForReview] Email error:", e); }
-
-        return { success: true };
+      .mutation(async () => {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This action is no longer available." });
       }),
 
     // ─── Payment History: fetch from Stripe ───

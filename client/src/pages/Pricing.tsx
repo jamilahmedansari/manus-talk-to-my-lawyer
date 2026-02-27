@@ -11,56 +11,19 @@ const PLANS = [
   {
     id: "per_letter",
     name: "Pay Per Letter",
-    price: "$29",
+    price: "$200",
     period: "per letter",
-    description: "One professional legal letter, no commitment",
+    description: "One professional attorney-reviewed legal letter",
     badge: null,
     features: [
       "1 professional legal letter",
       "AI-powered legal research",
       "Attorney review & approval",
-      "Final approved letter",
+      "Final approved PDF",
       "Email delivery",
     ],
-    cta: "Get Started",
-    highlight: false,
-  },
-  {
-    id: "monthly",
-    name: "Monthly Plan",
-    price: "$79",
-    period: "per month",
-    description: "Unlimited letters for active legal needs",
-    badge: "Most Popular",
-    features: [
-      "Unlimited legal letters",
-      "Priority attorney review",
-      "AI-powered legal research",
-      "All letter types supported",
-      "Email delivery",
-      "Cancel anytime",
-    ],
-    cta: "Subscribe Monthly",
+    cta: "Get Your Letter",
     highlight: true,
-  },
-  {
-    id: "annual",
-    name: "Annual Plan",
-    price: "$599",
-    period: "per year",
-    description: "Best value for ongoing legal protection",
-    badge: "Best Value",
-    features: [
-      "50 legal letters per year",
-      "Priority attorney review",
-      "AI-powered legal research",
-      "All letter types supported",
-      "Email delivery",
-      "Dedicated support",
-      "Save 37% vs monthly",
-    ],
-    cta: "Subscribe Annually",
-    highlight: false,
   },
 ];
 
@@ -96,22 +59,18 @@ export default function Pricing() {
           </div>
           <h1 className="text-4xl font-bold mb-4">Professional Legal Letters</h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Get attorney-reviewed legal letters powered by AI research. Choose the plan that fits your needs.
+            Get an attorney-reviewed legal letter powered by AI research — $200 per letter, no subscription required.
           </p>
         </div>
       </div>
 
       {/* Plans */}
       <div className="max-w-6xl mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex justify-center">
           {PLANS.map((plan) => (
             <Card
               key={plan.id}
-              className={`relative flex flex-col ${
-                plan.highlight
-                  ? "border-[#3b82f6] shadow-lg shadow-blue-500/20 scale-105"
-                  : "border-border"
-              }`}
+              className="relative flex flex-col w-full max-w-sm border-[#3b82f6] shadow-lg shadow-blue-500/20"
             >
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -138,8 +97,8 @@ export default function Pricing() {
                   ))}
                 </ul>
                 <Button
-                  className={`w-full ${plan.highlight ? "bg-[#3b82f6] hover:bg-[#2563eb] text-white" : ""}`}
-                  variant={plan.highlight ? "default" : "outline"}
+                  className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white"
+                  variant="default"
                   onClick={() => handleSelectPlan(plan.id)}
                   disabled={checkoutMutation.isPending}
                 >

@@ -1,11 +1,10 @@
-import { CheckCircle2, Circle, Clock, AlertTriangle, XCircle, Loader2, Lock, Unlock } from "lucide-react";
+import { CheckCircle2, Circle, Clock, AlertTriangle, XCircle, Loader2, Lock } from "lucide-react";
 
 const STATUS_STEPS = [
   { key: "submitted", label: "Submitted", icon: Circle },
   { key: "researching", label: "Researching", icon: Loader2 },
   { key: "drafting", label: "Drafting", icon: Loader2 },
   { key: "generated_locked", label: "Ready to Unlock", icon: Lock },
-  { key: "generated_unlocked", label: "Draft Ready", icon: Unlock },
   { key: "pending_review", label: "Pending Review", icon: Clock },
   { key: "under_review", label: "Under Review", icon: Clock },
 ] as const;
@@ -34,14 +33,6 @@ export default function StatusTimeline({ currentStatus, className }: StatusTimel
           const isCurrent = currentIdx === idx && !isTerminal;
           const isInProgress = isCurrent && (step.key === "researching" || step.key === "drafting");
           const isPaywall = isCurrent && step.key === "generated_locked";
-          const isUnlocked = isCurrent && step.key === "generated_unlocked";
-
-          // Skip generated_locked step if the letter went through generated_unlocked path (and vice versa)
-          if (step.key === "generated_locked" && currentStatus === "generated_unlocked") return null;
-          if (step.key === "generated_unlocked" && currentStatus === "generated_locked") return null;
-          // For statuses past both, show whichever was used (hide the other)
-          if (step.key === "generated_locked" && currentIdx > STATUS_STEPS.findIndex(s => s.key === "generated_unlocked")) return null;
-          if (step.key === "generated_unlocked" && currentIdx > STATUS_STEPS.findIndex(s => s.key === "generated_locked") && currentStatus !== "generated_unlocked") return null;
           const Icon = step.icon;
 
           return (
@@ -63,8 +54,6 @@ export default function StatusTimeline({ currentStatus, className }: StatusTimel
                     <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
                   ) : isPaywall ? (
                     <Lock className="w-6 h-6 text-amber-500" />
-                  ) : isUnlocked ? (
-                    <Unlock className="w-6 h-6 text-green-500" />
                   ) : (
                     <Clock className="w-6 h-6 text-blue-500" />
                   )
@@ -86,8 +75,7 @@ export default function StatusTimeline({ currentStatus, className }: StatusTimel
               >
                 {step.label}
                 {isInProgress && <span className="ml-2 text-xs text-blue-400">(in progress...)</span>}
-                {isPaywall && <span className="ml-2 text-xs text-amber-500">(payment required)</span>}
-                {isUnlocked && <span className="ml-2 text-xs text-green-500">(free — ready to send for review)</span>}
+                {isPaywall && <span className="ml-2 text-xs text-amber-500">(payment required — $200)</span>}
               </span>
             </div>
           );

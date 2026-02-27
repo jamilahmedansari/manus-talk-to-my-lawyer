@@ -164,7 +164,7 @@ export default function Home() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-white/70 border border-blue-200 rounded-full px-4 py-1.5 mb-8 text-sm text-blue-700 font-medium shadow-sm">
             <span className="w-2 h-2 bg-green-500 rounded-full inline-block animate-pulse"></span>
-            Your First Letter Is Free — No Credit Card Required
+            Attorney-Reviewed Letters — $200 Per Letter
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 mb-4 leading-tight tracking-tight">
@@ -198,7 +198,7 @@ export default function Home() {
 
           <p className="text-slate-700 text-lg mb-10 font-medium max-w-2xl mx-auto">
             Describe your legal situation. Our AI researches applicable laws, drafts a professional letter, and a licensed attorney reviews every word before delivery.{" "}
-            <span className="text-blue-600 font-bold">Try your first letter free.</span>
+            <span className="text-blue-600 font-bold">$200 per letter — no subscription required.</span>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-14">
@@ -207,7 +207,7 @@ export default function Home() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 text-base font-semibold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2"
               onClick={goToLogin}
             >
-              <Play className="w-4 h-4" fill="white" /> Start Your Free Letter
+              <Play className="w-4 h-4" fill="white" /> Get Your Letter — $200
             </Button>
             <Button
               size="lg"
@@ -236,7 +236,7 @@ export default function Home() {
           {/* Trust badges */}
           <div className="flex flex-wrap justify-center gap-8 text-sm text-slate-600">
             {[
-              { icon: CheckCircle2, label: "First letter free" },
+              { icon: CheckCircle2, label: "$200 per letter" },
               { icon: CheckCircle2, label: "24–48 hour attorney turnaround" },
               { icon: CheckCircle2, label: "Downloadable PDF" },
               { icon: CheckCircle2, label: "Licensed attorney sign-off" },
@@ -404,96 +404,31 @@ export default function Home() {
           <h2 className="text-4xl font-bold text-slate-900 mb-4">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-slate-600 text-lg mb-3">
-            Your first letter is free. After that, choose the plan that fits.
+          <p className="text-slate-600 text-lg mb-12">
+            $200 per letter — attorney reviewed, AI researched, downloadable PDF.
           </p>
-          <p className="text-blue-600 text-sm mb-12 font-semibold">
-            Have an affiliate code? Apply it at checkout for 20% off.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              {
-                plan: "Pay Per Letter",
-                price: "$200",
-                period: "one-time",
-                features: ["Single attorney-reviewed letter", "AI legal research included", "Downloadable PDF", "Full audit trail"],
-                sub: "Best for a one-time legal need",
-                highlight: false,
-              },
-              {
-                plan: "Monthly",
-                price: "$79",
-                period: "/month",
-                features: ["4 letters per month", "Priority attorney review", "Downloadable PDFs", "Cancel anytime"],
-                sub: "Best for ongoing legal matters",
-                highlight: true,
-              },
-              {
-                plan: "Annual",
-                price: "$599",
-                period: "/year",
-                features: ["48 letters per year", "Priority attorney review", "Downloadable PDFs", "Save $349 vs monthly"],
-                sub: "Best value for frequent users",
-                highlight: false,
-              },
-            ].map((tier) => (
-              <div
-                key={tier.plan}
-                className={`rounded-2xl p-6 border text-left ${
-                  tier.highlight
-                    ? "border-blue-500 bg-blue-600 text-white shadow-xl shadow-blue-200 relative"
-                    : "border-slate-200 bg-white shadow-sm"
-                }`}
-              >
-                {tier.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-3 py-1 rounded-full tracking-wide">
-                    MOST POPULAR
-                  </div>
-                )}
-                <h3
-                  className={`font-bold text-lg mb-1 ${
-                    tier.highlight ? "text-white" : "text-slate-900"
-                  }`}
-                >
-                  {tier.plan}
-                </h3>
-                <div className="flex items-baseline gap-1 mb-3">
-                  <span
-                    className={`text-3xl font-bold ${
-                      tier.highlight ? "text-white" : "text-slate-900"
-                    }`}
-                  >
-                    {tier.price}
-                  </span>
-                  <span
-                    className={`text-sm ${
-                      tier.highlight ? "text-blue-200" : "text-slate-400"
-                    }`}
-                  >
-                    {tier.period}
-                  </span>
-                </div>
-                <ul className="space-y-2 mb-4">
-                  {tier.features.map((f) => (
-                    <li key={f} className={`flex items-start gap-2 text-sm ${
-                      tier.highlight ? "text-blue-100" : "text-slate-600"
-                    }`}>
-                      <CheckCircle2 className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                        tier.highlight ? "text-blue-200" : "text-green-500"
-                      }`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <p
-                  className={`text-xs ${
-                    tier.highlight ? "text-blue-200" : "text-slate-400"
-                  }`}
-                >
-                  {tier.sub}
-                </p>
+          <div className="flex justify-center">
+            <div className="rounded-2xl p-8 border border-blue-500 bg-blue-600 text-white shadow-xl shadow-blue-200 max-w-sm w-full">
+              <h3 className="font-bold text-lg mb-1 text-white">Pay Per Letter</h3>
+              <div className="flex items-baseline gap-1 mb-3">
+                <span className="text-4xl font-bold text-white">$200</span>
+                <span className="text-sm text-blue-200">one-time</span>
               </div>
-            ))}
+              <ul className="space-y-2 mb-6">
+                {[
+                  "Single attorney-reviewed letter",
+                  "AI legal research included",
+                  "Downloadable PDF",
+                  "Full audit trail",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-blue-100">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-200" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-blue-200">One-time payment per letter. No subscription.</p>
+            </div>
           </div>
           <div className="mt-10 space-y-3">
             <Button
@@ -501,9 +436,9 @@ export default function Home() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-12 text-lg shadow-lg rounded-xl"
               onClick={goToLogin}
             >
-              Start Your Free Letter <ArrowRight className="ml-2 w-5 h-5" />
+              Get Your Letter — $200 <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-            <p className="text-slate-500 text-sm">No credit card required for your first letter</p>
+            <p className="text-slate-500 text-sm">AI-drafted, attorney-approved, delivered within 24–48 hours</p>
           </div>
         </div>
       </section>
@@ -529,12 +464,8 @@ export default function Home() {
                 a: "Talk to My Lawyer is a legal letter service that combines AI drafting with mandatory attorney review. You describe your legal situation through a guided intake form, our AI researches applicable laws for your jurisdiction and generates a professional letter, and then a licensed attorney reviews, edits, and approves the final document before you receive it.",
               },
               {
-                q: "Is my first letter really free?",
-                a: "Yes. Your first letter is generated and submitted for attorney review at no cost. You can read the full AI draft, and once the attorney approves it, you can download the final PDF. No credit card is required for your first letter.",
-              },
-              {
-                q: "How much does it cost after the first letter?",
-                a: "After your free letter, you can pay $200 per letter on a one-time basis, or subscribe to our Monthly plan ($79/month for 4 letters) or Annual plan ($599/year for 48 letters). Affiliate discount codes can reduce the price by 20% on any plan.",
+                q: "How much does a letter cost?",
+                a: "Each attorney-reviewed legal letter costs $200 — a one-time payment, no subscription required. This covers AI-powered legal research, professional letter drafting, licensed attorney review and approval, and a downloadable PDF of the final letter.",
               },
               {
                 q: "How long does it take to receive my letter?",
@@ -553,8 +484,8 @@ export default function Home() {
                 a: "Every letter is reviewed by a licensed attorney in our Review Center. Attorneys read the AI-generated draft, verify legal citations, make edits where needed, and either approve the letter, reject it, or request additional information from you. No letter is delivered without explicit attorney sign-off.",
               },
               {
-                q: "Can I see the AI draft before it goes to an attorney?",
-                a: "Yes. For your first free letter, you see the full AI draft and can send it for attorney review at no cost. For subsequent letters without a subscription, you see a blurred preview and can either pay $200 to unlock it or subscribe to a monthly or annual plan.",
+                q: "Can I see the AI draft before the attorney reviews it?",
+                a: "Yes. After the AI completes drafting, you can preview a partially blurred version of your letter. Once you pay the $200 fee, the full draft is unlocked and submitted to the attorney review queue.",
               },
               {
                 q: "Is my information confidential?",

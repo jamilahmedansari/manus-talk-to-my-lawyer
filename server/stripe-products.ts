@@ -4,19 +4,17 @@
  *
  * Plans:
  *  per_letter  — $200 one-time per letter (pay-as-you-go)
- *  monthly     — $79/month unlimited letters
- *  annual      — $599/year (50 letters/year, ~$12/letter)
  *
- * First letter is FREE — no payment required for the first attorney review.
+ * Every letter requires payment: submit → AI pipeline → generated_locked → $200 unlock → attorney review.
  */
 
 export interface PlanConfig {
-  id: "per_letter" | "monthly" | "annual";
+  id: "per_letter";
   name: string;
   description: string;
   price: number; // in cents
-  interval: "one_time" | "month" | "year";
-  lettersAllowed: number; // -1 = unlimited
+  interval: "one_time";
+  lettersAllowed: number;
   badge?: string;
   features: string[];
 }
@@ -38,41 +36,6 @@ export const PLANS: Record<string, PlanConfig> = {
       "Attorney review & approval",
       "Final approved PDF",
       "Email delivery",
-    ],
-  },
-  monthly: {
-    id: "monthly",
-    name: "Monthly Plan",
-    description: "Unlimited letters for active legal needs",
-    price: 7900, // $79/month
-    interval: "month",
-    lettersAllowed: -1, // unlimited
-    badge: "Most Popular",
-    features: [
-      "Unlimited legal letters",
-      "Priority attorney review",
-      "AI-powered research (Perplexity)",
-      "All letter types supported",
-      "Email delivery",
-      "Cancel anytime",
-    ],
-  },
-  annual: {
-    id: "annual",
-    name: "Annual Plan",
-    description: "Best value for ongoing legal protection",
-    price: 59900, // $599/year
-    interval: "year",
-    lettersAllowed: 50,
-    badge: "Best Value",
-    features: [
-      "50 legal letters per year",
-      "Priority attorney review",
-      "AI-powered research (Perplexity)",
-      "All letter types supported",
-      "Email delivery",
-      "Dedicated support",
-      "Save 37% vs monthly",
     ],
   },
 };
