@@ -1089,3 +1089,22 @@
 - [x] 10: All flows work end-to-end (verified via code audit of all procedures + UI components)
 - [x] 10: First letter free logic cannot be exploited (server-side double-check in freeUnlock + RBAC)
 - [x] 10: Role-based permissions enforced (4 procedure guards: subscriber, employee, attorney, admin)
+
+## Phase 83 — Code-Splitting for Frontend Bundle
+- [x] Analyze current bundle size and identify splitting targets (baseline: 2,138 kB single chunk)
+- [x] Convert admin pages to React.lazy() dynamic imports
+- [x] Convert employee pages to React.lazy() dynamic imports
+- [x] Convert attorney/review pages to React.lazy() dynamic imports
+- [x] Convert subscriber pages to React.lazy() dynamic imports
+- [x] Convert public pages (Pricing, FAQ, etc.) to React.lazy() dynamic imports
+- [x] Create PublicPageSkeleton (for Pricing, FAQ, Onboarding)
+- [x] Create AuthPageSkeleton (for ForgotPassword, VerifyEmail, ResetPassword)
+- [x] Create SubscriberPageSkeleton (7 variants: Dashboard, SubmitLetter, MyLetters, LetterDetail, Billing, Receipts, Profile)
+- [x] Create AttorneyPageSkeleton (3 variants: Dashboard, ReviewQueue, ReviewDetail)
+- [x] Create EmployeePageSkeleton (AffiliateDashboard)
+- [x] Create AdminPageSkeleton (6 variants: Dashboard, Users, Jobs, AllLetters, LetterDetail, Affiliate)
+- [x] Wire per-route Suspense boundaries with matching skeletons in App.tsx (20 unique skeleton variants)
+- [x] Configure Vite manual chunks for vendor libraries (Tiptap, Recharts, Stripe, Supabase, Radix, Framer, PDF, AI SDK, Icons, React)
+- [x] Verify build output shows 41 chunks (was 1), largest 357 kB (was 2,138 kB)
+- [x] Run full test suite — 29 files, 573 tests, 0 failures
+- [x] Measure improvement: initial bundle 357 kB (83% reduction from 2,138 kB baseline)

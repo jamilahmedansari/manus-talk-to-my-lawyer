@@ -67,7 +67,8 @@ describe("Phase 37: Role-based routing, FAQ, Onboarding, Mobile nav", () => {
     it("should include /faq route", () => {
       const content = readFileSync(filePath, "utf-8");
       expect(content).toContain('path="/faq"');
-      expect(content).toContain("import FAQ");
+      // FAQ is lazy-loaded via React.lazy(() => import(...))
+      expect(content).toMatch(/FAQ.*=.*lazy/);
     });
   });
 
