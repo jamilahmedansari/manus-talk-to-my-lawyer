@@ -674,6 +674,19 @@ export async function createCommission(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // ─── Idempotency: prevent duplicate commissions for the same Stripe payment ───
+  if (data.stripePaymentIntentId) {
+    const existing = await db.select({ id: commissionLedger.id })
+      .from(commissionLedger)
+      .where(eq(commissionLedger.stripePaymentIntentId, data.stripePaymentIntentId))
+      .limit(1);
+    if (existing.length > 0) {
+      console.log(`[Commission] Duplicate prevented: commission already exists for PI ${data.stripePaymentIntentId}`);
+      return existing[0];
+    }
+  }
+
   const result = await db.insert(commissionLedger).values({
     employeeId: data.employeeId,
     letterRequestId: data.letterRequestId,

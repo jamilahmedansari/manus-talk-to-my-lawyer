@@ -1007,3 +1007,14 @@
 - [x] Verify first letter free flow works correctly (checkPaywallStatus + freeUnlock + LetterPaywall green CTA)
 - [x] Add mobile responsiveness fixes for key pages (SubmitLetter step overflow, Billing rows, AllLetters filters, employee Dashboard grid, scrollbar-thin utility, safe-area padding)
 - [x] Test all user flows end-to-end (65 new tests in phase82-discount-mobile.test.ts, 573 total passing)
+
+## Phase 82b — Production Deployment & E2E Checklist Audit
+- [x] Stripe checkout metadata: enriched with discount_code_id, employee_id, original_price, final_price
+- [x] Commission calculation: uses session.amount_total (final price after Stripe coupon applied)
+- [x] Webhook idempotency: createCommission now checks for existing stripePaymentIntentId before insert
+- [x] Discount code usage counter: incrementDiscountCodeUsage called in webhook for both payment and subscription modes
+- [x] First-letter-free: checkPaywallStatus returns 'free' when 0 unlocked letters, freeUnlock transitions to pending_review
+- [x] Referral link format: Pricing page now reads both ?code= and ?coupon= URL params
+- [x] Build verification: pnpm build succeeds (0 errors, chunk size warning only)
+- [x] TypeScript: 0 errors (tsc watch confirmed)
+- [x] Full test suite passes (29 files, 573 tests, 0 failures)

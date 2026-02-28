@@ -140,23 +140,27 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                   const discountCodeStr = session.metadata?.discount_code;
                   if (discountCodeStr) {
                     try {
+                      // Use enriched metadata when available, fall back to DB lookup
+                      const metaEmployeeId = session.metadata?.employee_id ? parseInt(session.metadata.employee_id, 10) : null;
+                      const metaDiscountCodeId = session.metadata?.discount_code_id ? parseInt(session.metadata.discount_code_id, 10) : null;
                       const discountCode = await getDiscountCodeByCode(discountCodeStr);
                       if (discountCode && discountCode.isActive) {
                         await incrementDiscountCodeUsage(discountCode.id);
-                        const saleAmount = session.amount_total ?? 20000; // cents
+                        const saleAmount = session.amount_total ?? 20000; // cents (final price after discount)
+                        const originalPrice = session.metadata?.original_price ? parseInt(session.metadata.original_price, 10) : saleAmount;
                         const commissionRate = 500; // 5% = 500 basis points
                         const commissionAmount = Math.round(saleAmount * commissionRate / 10000);
                         await createCommission({
-                          employeeId: discountCode.employeeId,
+                          employeeId: metaEmployeeId ?? discountCode.employeeId,
                           letterRequestId: letterId,
                           subscriberId: userId,
-                          discountCodeId: discountCode.id,
+                          discountCodeId: metaDiscountCodeId ?? discountCode.id,
                           stripePaymentIntentId: paymentIntentId ?? undefined,
                           saleAmount,
                           commissionRate,
                           commissionAmount,
                         });
-                        console.log(`[StripeWebhook] Commission created: $${(commissionAmount / 100).toFixed(2)} for employee #${discountCode.employeeId}`);
+                        console.log(`[StripeWebhook] Commission created: $${(commissionAmount / 100).toFixed(2)} for employee #${metaEmployeeId ?? discountCode.employeeId} (original: $${(originalPrice / 100).toFixed(2)}, final: $${(saleAmount / 100).toFixed(2)})`);
                         // ─── Notify employee of commission earned ───
                         try {
                           const employee = await getUserById(discountCode.employeeId);
@@ -199,18 +203,22 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           const discountCodeStr = session.metadata?.discount_code;
           if (discountCodeStr) {
             try {
+              // Use enriched metadata when available, fall back to DB lookup
+              const metaEmployeeId = session.metadata?.employee_id ? parseInt(session.metadata.employee_id, 10) : null;
+              const metaDiscountCodeId = session.metadata?.discount_code_id ? parseInt(session.metadata.discount_code_id, 10) : null;
               const discountCode = await getDiscountCodeByCode(discountCodeStr);
               if (discountCode && discountCode.isActive) {
                 await incrementDiscountCodeUsage(discountCode.id);
                 const saleAmount = session.amount_total ?? 0;
+                const originalPrice = session.metadata?.original_price ? parseInt(session.metadata.original_price, 10) : saleAmount;
                 if (saleAmount > 0) {
                   const commissionRate = 500; // 5% = 500 basis points
                   const commissionAmount = Math.round(saleAmount * commissionRate / 10000);
                   await createCommission({
-                    employeeId: discountCode.employeeId,
+                    employeeId: metaEmployeeId ?? discountCode.employeeId,
                     letterRequestId: undefined,
                     subscriberId: userId,
-                    discountCodeId: discountCode.id,
+                    discountCodeId: metaDiscountCodeId ?? discountCode.id,
                     stripePaymentIntentId: typeof session.payment_intent === "string"
                       ? session.payment_intent
                       : session.payment_intent?.id ?? undefined,
@@ -218,7 +226,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                     commissionRate,
                     commissionAmount,
                   });
-                  console.log(`[StripeWebhook] Subscription commission: $${(commissionAmount / 100).toFixed(2)} for employee #${discountCode.employeeId} (plan: ${planId})`);
+                  console.log(`[StripeWebhook] Subscription commission: $${(commissionAmount / 100).toFixed(2)} for employee #${metaEmployeeId ?? discountCode.employeeId} (original: $${(originalPrice / 100).toFixed(2)}, final: $${(saleAmount / 100).toFixed(2)}, plan: ${planId})`);
                   // ─── Notify employee of commission earned ───
                   try {
                     const employee = await getUserById(discountCode.employeeId);

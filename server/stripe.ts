@@ -13,9 +13,17 @@ import { PLANS, getPlanConfig, LETTER_UNLOCK_PRICE_CENTS, MONTHLY_BASIC_PRICE_CE
 /**
  * Resolves a discount code from our DB into a Stripe coupon ID.
  * Creates a Stripe coupon on-the-fly if the code is valid and active.
- * Returns the coupon ID or null if the code is invalid/expired.
+ * Returns the coupon ID + discount code details for metadata enrichment,
+ * or null if the code is invalid/expired.
  */
-async function resolveStripeCoupon(discountCode: string | undefined): Promise<string | null> {
+interface ResolvedDiscount {
+  stripeCouponId: string;
+  discountCodeId: number;
+  employeeId: number;
+  discountPercent: number;
+}
+
+async function resolveStripeCoupon(discountCode: string | undefined): Promise<ResolvedDiscount | null> {
   if (!discountCode) return null;
   try {
     const code = await getDiscountCodeByCode(discountCode);
@@ -37,7 +45,12 @@ async function resolveStripeCoupon(discountCode: string | undefined): Promise<st
         name: `${code.discountPercent}% Off — Referral Discount`,
       });
     }
-    return couponId;
+    return {
+      stripeCouponId: couponId,
+      discountCodeId: code.id,
+      employeeId: code.employeeId,
+      discountPercent: code.discountPercent,
+    };
   } catch (err) {
     console.error("[Stripe] Failed to resolve discount coupon:", err);
     return null;
@@ -106,23 +119,33 @@ export async function createCheckoutSession(params: {
   const stripe = getStripe();
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
-  // Resolve discount code to a Stripe coupon
-  const stripeCouponId = await resolveStripeCoupon(discountCode);
+  // Resolve discount code to a Stripe coupon + metadata
+  const resolved = await resolveStripeCoupon(discountCode);
+  const originalPriceCents = plan.price;
+  const finalPriceCents = resolved
+    ? Math.round(originalPriceCents * (1 - resolved.discountPercent / 100))
+    : originalPriceCents;
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: customerId,
     client_reference_id: userId.toString(),
     payment_method_types: ["card"],
     // Only allow Stripe's built-in promo codes if no custom discount is applied
-    ...(stripeCouponId
-      ? { discounts: [{ coupon: stripeCouponId }] }
+    ...(resolved
+      ? { discounts: [{ coupon: resolved.stripeCouponId }] }
       : { allow_promotion_codes: true }),
     metadata: {
       user_id: userId.toString(),
       plan_id: planId,
       customer_email: email,
       customer_name: name ?? "",
+      original_price: originalPriceCents.toString(),
+      final_price: finalPriceCents.toString(),
       ...(discountCode ? { discount_code: discountCode } : {}),
+      ...(resolved ? {
+        discount_code_id: resolved.discountCodeId.toString(),
+        employee_id: resolved.employeeId.toString(),
+      } : {}),
     },
     success_url: `${origin}/subscriber/billing?success=true&plan=${planId}`,
     cancel_url: `${origin}/pricing?canceled=true`,
@@ -389,16 +412,20 @@ export async function createLetterUnlockCheckout(params: {
   const stripe = getStripe();
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
-  // Resolve discount code to a Stripe coupon
-  const stripeCouponId = await resolveStripeCoupon(discountCode);
+  // Resolve discount code to a Stripe coupon + metadata
+  const resolved = await resolveStripeCoupon(discountCode);
+  const originalPriceCents = LETTER_UNLOCK_PRICE_CENTS;
+  const finalPriceCents = resolved
+    ? Math.round(originalPriceCents * (1 - resolved.discountPercent / 100))
+    : originalPriceCents;
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     client_reference_id: userId.toString(),
     mode: "payment",
     payment_method_types: ["card"],
-    ...(stripeCouponId
-      ? { discounts: [{ coupon: stripeCouponId }] }
+    ...(resolved
+      ? { discounts: [{ coupon: resolved.stripeCouponId }] }
       : { allow_promotion_codes: true }),
     metadata: {
       user_id: userId.toString(),
@@ -407,7 +434,13 @@ export async function createLetterUnlockCheckout(params: {
       unlock_type: "letter_unlock",
       customer_email: email,
       customer_name: name ?? "",
+      original_price: originalPriceCents.toString(),
+      final_price: finalPriceCents.toString(),
       ...(discountCode ? { discount_code: discountCode } : {}),
+      ...(resolved ? {
+        discount_code_id: resolved.discountCodeId.toString(),
+        employee_id: resolved.employeeId.toString(),
+      } : {}),
     },
     line_items: [
       {

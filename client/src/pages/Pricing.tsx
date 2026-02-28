@@ -74,10 +74,10 @@ export default function Pricing() {
   const [, navigate] = useLocation();
   const searchString = useSearch();
 
-  // Extract ?code= URL parameter
+  // Extract ?code= or ?coupon= URL parameter (employee referral links use ?coupon=)
   const urlCode = useMemo(() => {
     const params = new URLSearchParams(searchString);
-    return params.get("code") ?? undefined;
+    return params.get("code") ?? params.get("coupon") ?? undefined;
   }, [searchString]);
 
   // Discount code state
