@@ -981,3 +981,10 @@
 - [x] Wire sendAttorneyReviewAssignedEmail into claimLetterForReview tRPC procedure
 - [x] Write test for the email notification on claim
 - [x] Save checkpoint and push to GitHub
+
+## Phase 80: Wire Employee Commission Email
+
+- [x] Audit stripeWebhook.ts commission creation logic
+- [x] Wire sendEmployeeCommissionEmail into commission creation block
+- [x] Write tests for the commission email notification
+- [x] Save checkpoint and push to GitHub

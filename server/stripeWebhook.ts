@@ -7,12 +7,13 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getStripe, activateSubscription } from "./stripe";
+import { getPlanConfig } from "./stripe-products";
 import {
   getDb, updateLetterStatus, logReviewAction, getLetterRequestById,
   getUserById, createNotification, getDiscountCodeByCode,
   incrementDiscountCodeUsage, createCommission,
 } from "./db";
-import { sendLetterApprovedEmail, sendLetterUnlockedEmail } from "./email";
+import { sendLetterApprovedEmail, sendLetterUnlockedEmail, sendEmployeeCommissionEmail } from "./email";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -156,6 +157,27 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                           commissionAmount,
                         });
                         console.log(`[StripeWebhook] Commission created: $${(commissionAmount / 100).toFixed(2)} for employee #${discountCode.employeeId}`);
+                        // ─── Notify employee of commission earned ───
+                        try {
+                          const employee = await getUserById(discountCode.employeeId);
+                          const subscriber = await getUserById(userId);
+                          if (employee?.email) {
+                            const planCfg = getPlanConfig(planId);
+                            const appUrl = session.success_url?.split('/letters')[0]
+                              ?? `https://${process.env.VITE_APP_ID ?? 'app'}.manus.space`;
+                            await sendEmployeeCommissionEmail({
+                              to: employee.email,
+                              name: employee.name ?? "Employee",
+                              subscriberName: subscriber?.name ?? "A subscriber",
+                              planName: planCfg?.name ?? "Pay Per Letter",
+                              commissionAmount: `$${(commissionAmount / 100).toFixed(2)}`,
+                              discountCode: discountCodeStr,
+                              dashboardUrl: `${appUrl}/employee/dashboard`,
+                            });
+                          }
+                        } catch (emailErr) {
+                          console.error(`[StripeWebhook] Commission email error (per-letter):`, emailErr);
+                        }
                       }
                     } catch (commErr) {
                       console.error(`[StripeWebhook] Commission tracking error:`, commErr);
@@ -197,6 +219,27 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                     commissionAmount,
                   });
                   console.log(`[StripeWebhook] Subscription commission: $${(commissionAmount / 100).toFixed(2)} for employee #${discountCode.employeeId} (plan: ${planId})`);
+                  // ─── Notify employee of commission earned ───
+                  try {
+                    const employee = await getUserById(discountCode.employeeId);
+                    const subscriber = await getUserById(userId);
+                    if (employee?.email) {
+                      const planCfg = getPlanConfig(planId);
+                      const appUrl = session.success_url?.split('/letters')[0]
+                        ?? `https://${process.env.VITE_APP_ID ?? 'app'}.manus.space`;
+                      await sendEmployeeCommissionEmail({
+                        to: employee.email,
+                        name: employee.name ?? "Employee",
+                        subscriberName: subscriber?.name ?? "A subscriber",
+                        planName: planCfg?.name ?? planId,
+                        commissionAmount: `$${(commissionAmount / 100).toFixed(2)}`,
+                        discountCode: discountCodeStr,
+                        dashboardUrl: `${appUrl}/employee/dashboard`,
+                      });
+                    }
+                  } catch (emailErr) {
+                    console.error(`[StripeWebhook] Commission email error (subscription):`, emailErr);
+                  }
                 }
               }
             } catch (commErr) {
