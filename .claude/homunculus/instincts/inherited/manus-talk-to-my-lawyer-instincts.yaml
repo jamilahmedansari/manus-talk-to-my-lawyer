@@ -1,0 +1,789 @@
+# Instincts generated from https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+# Generated: 2026-02-28T00:41:06.076Z
+# Version: 2.0
+
+---
+id: manus-talk-to-my-lawyer-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Commit Length
+
+## Action
+
+Write detailed commit messages (aim for 50-100 characters for first line)
+
+## Evidence
+
+- Average commit message length: 316 chars
+- Based on 68 commits
+
+---
+id: manus-talk-to-my-lawyer-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: manus-talk-to-my-lawyer-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: manus-talk-to-my-lawyer-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Export Style
+
+## Action
+
+Prefer mixed exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: mixed
+
+---
+id: manus-talk-to-my-lawyer-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: manus-talk-to-my-lawyer-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Test Framework
+
+## Action
+
+Use vitest as the test framework
+
+## Evidence
+
+- Test framework detected: vitest
+- File pattern: *.test.ts
+
+---
+id: manus-talk-to-my-lawyer-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: manus-talk-to-my-lawyer-test-mocking
+trigger: "when mocking dependencies in tests"
+confidence: 0.75
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Test Mocking
+
+## Action
+
+Use vi.mock for mocking
+
+## Evidence
+
+- Mocking pattern detected: vi.mock
+- Consistent across test files
+
+---
+id: manus-talk-to-my-lawyer-workflow-database-migration
+trigger: "when modifying the database schema or adding tables"
+confidence: 0.8
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Database Migration
+
+## Action
+
+Follow the database-migration workflow:
+1. Create migration file
+2. Update schema definitions
+3. Generate/update types
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~6x per month
+- Files: migrations/*, **/schema.*, **/types.ts
+
+---
+id: manus-talk-to-my-lawyer-workflow-test-driven-development
+trigger: "when adding new functionality"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Test Driven Development
+
+## Action
+
+Follow the test-driven-development workflow:
+1. Write failing test
+2. Implement code to pass test
+3. Refactor if needed
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~7x per month
+- Files: **/*.test.*, **/*.spec.*, src/**/*
+
+---
+id: manus-talk-to-my-lawyer-workflow-major-feature-development
+trigger: "when doing major feature development"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Major Feature Development
+
+## Action
+
+Follow the major-feature-development workflow:
+1. Update backend types and schemas
+2. Create/modify database migrations
+3. Update server routers and business logic
+4. Build/update client components
+5. Add comprehensive tests
+6. Update documentation
+7. Update todo.md
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~8x per month
+- Files: drizzle/schema.ts, server/routers.ts, client/src/pages/**/*.tsx
+
+---
+id: manus-talk-to-my-lawyer-workflow-database-schema-evolution
+trigger: "when doing database schema evolution"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Database Schema Evolution
+
+## Action
+
+Follow the database-schema-evolution workflow:
+1. Update drizzle/schema.ts
+2. Generate migration SQL
+3. Update meta snapshots
+4. Update server/db.ts helpers
+5. Add corresponding tests
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~12x per month
+- Files: drizzle/schema.ts, drizzle/*.sql, drizzle/meta/*.json
+
+---
+id: manus-talk-to-my-lawyer-workflow-checkpoint-commit
+trigger: "when doing checkpoint commit"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Checkpoint Commit
+
+## Action
+
+Follow the checkpoint-commit workflow:
+1. Complete feature implementation
+2. Run full test suite
+3. Verify TypeScript compilation
+4. Write comprehensive commit message with test counts
+5. Update todo.md with next steps
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~25x per month
+- Files: Multiple files per feature, todo.md, test files
+
+---
+id: manus-talk-to-my-lawyer-workflow-email-template-development
+trigger: "when doing email template development"
+confidence: 0.8
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Email Template Development
+
+## Action
+
+Follow the email-template-development workflow:
+1. Update server/email.ts with new template
+2. Add email-specific styling and branding
+3. Update related business logic in routers
+4. Add email tests
+5. Test email delivery
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~6x per month
+- Files: server/email.ts, server/routers.ts, server/*email*.test.ts
+
+---
+id: manus-talk-to-my-lawyer-workflow-ui-page-enhancement
+trigger: "when doing ui page enhancement"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Ui Page Enhancement
+
+## Action
+
+Follow the ui-page-enhancement workflow:
+1. Modify React components in client/src/pages/
+2. Update shared components if needed
+3. Add new styling
+4. Test UI changes
+5. Update related tests
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~15x per month
+- Files: client/src/pages/**/*.tsx, client/src/components/**/*.tsx, client/src/index.css
+
+---
+id: manus-talk-to-my-lawyer-workflow-test-suite-expansion
+trigger: "when doing test suite expansion"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Test Suite Expansion
+
+## Action
+
+Follow the test-suite-expansion workflow:
+1. Create new test file in server/
+2. Write unit tests for new functionality
+3. Add integration tests
+4. Verify all tests pass
+5. Update test counts in commit messages
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~20x per month
+- Files: server/*.test.ts, server/routers.ts
+
+---
+id: manus-talk-to-my-lawyer-workflow-stripe-payment-integration
+trigger: "when doing stripe payment integration"
+confidence: 0.75
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Stripe Payment Integration
+
+## Action
+
+Follow the stripe-payment-integration workflow:
+1. Update server/stripe.ts with new logic
+2. Modify server/stripeWebhook.ts for webhooks
+3. Update stripe-products.ts configuration
+4. Add payment-related UI components
+5. Test payment flows
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~5x per month
+- Files: server/stripe.ts, server/stripeWebhook.ts, server/stripe-products.ts
+
+---
+id: manus-talk-to-my-lawyer-workflow-pipeline-processing-updates
+trigger: "when doing pipeline processing updates"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Workflow Pipeline Processing Updates
+
+## Action
+
+Follow the pipeline-processing-updates workflow:
+1. Update server/pipeline.ts logic
+2. Modify status handling in routers
+3. Update client status displays
+4. Add pipeline tests
+5. Update status-related UI components
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~8x per month
+- Files: server/pipeline.ts, server/routers.ts, shared/types.ts
+
+---
+id: manus-talk-to-my-lawyer-camel-case-files
+trigger: "When creating new files"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Camel Case Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- drizzle.config.ts
+- vite.config.ts
+- vitest.config.ts files follow camelCase
+
+---
+id: manus-talk-to-my-lawyer-pascal-case-classes
+trigger: "When defining classes"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Pascal Case Classes
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Naming conventions pattern shows PascalCase for classes
+
+---
+id: manus-talk-to-my-lawyer-screaming-snake-constants
+trigger: "When defining constants"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Screaming Snake Constants
+
+## Action
+
+Use SCREAMING_SNAKE_CASE naming convention
+
+## Evidence
+
+- Naming conventions pattern shows SCREAMING_SNAKE_CASE for constants
+
+---
+id: manus-talk-to-my-lawyer-alias-imports
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Alias Imports
+
+## Action
+
+Use alias import style
+
+## Evidence
+
+- Import style is configured as alias
+
+---
+id: manus-talk-to-my-lawyer-vitest-testing
+trigger: "When writing tests"
+confidence: 0.95
+domain: testing
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Vitest Testing
+
+## Action
+
+Use vitest framework with *.test.ts pattern
+
+## Evidence
+
+- Testing framework is vitest
+- File pattern is *.test.ts
+- vitest.config.ts exists
+
+---
+id: manus-talk-to-my-lawyer-vi-mock-style
+trigger: "When mocking in tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Vi Mock Style
+
+## Action
+
+Use vi.mock mocking style
+
+## Evidence
+
+- Mocking style is vi.mock
+- Vitest framework uses vi.mock
+
+---
+id: manus-talk-to-my-lawyer-checkpoint-commits
+trigger: "When completing a development phase"
+confidence: 0.98
+domain: git
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Checkpoint Commits
+
+## Action
+
+Write comprehensive checkpoint commit with test counts and phase description
+
+## Evidence
+
+- Checkpoint: Phase 76: Pricing model overhaul — new plan IDs (free_trial, per_letter, monthly_basic $499, monthly_pro $699), legacy aliases for backward compat, 5 new branded employee/attorney email templates, all 484 tests passing
+- 25 checkpoint commits per month frequency
+
+---
+id: manus-talk-to-my-lawyer-freeform-commits
+trigger: "When making any commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Freeform Commits
+
+## Action
+
+Use freeform commit style with detailed descriptions averaging 316 characters
+
+## Evidence
+
+- Commits are freeform type
+- Average length is 316 characters
+- Examples show detailed descriptions
+
+---
+id: manus-talk-to-my-lawyer-schema-first-db
+trigger: "When modifying database structure"
+confidence: 0.92
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Schema First Db
+
+## Action
+
+Update drizzle/schema.ts first, then generate migration SQL
+
+## Evidence
+
+- Database-schema-evolution workflow
+- 12 occurrences per month
+- Files: drizzle/schema.ts, drizzle/*.sql
+
+---
+id: manus-talk-to-my-lawyer-test-driven-development
+trigger: "When implementing new functionality"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Test Driven Development
+
+## Action
+
+Write failing test first, then implement code to pass test
+
+## Evidence
+
+- Test-driven-development workflow
+- 7 occurrences per month
+- Sequence: Write failing test → Implement code → Refactor
+
+---
+id: manus-talk-to-my-lawyer-email-template-structure
+trigger: "When creating email templates"
+confidence: 0.88
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Email Template Structure
+
+## Action
+
+Update server/email.ts with branding and add corresponding tests
+
+## Evidence
+
+- Email-template-development workflow
+- 6 occurrences per month
+- Files: server/email.ts, server/*email*.test.ts
+
+---
+id: manus-talk-to-my-lawyer-ui-component-updates
+trigger: "When modifying user interface"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Ui Component Updates
+
+## Action
+
+Update React components in client/src/pages/ and shared components
+
+## Evidence
+
+- UI-page-enhancement workflow
+- 15 occurrences per month
+- Files: client/src/pages/**/*.tsx, client/src/components/**/*.tsx
+
+---
+id: manus-talk-to-my-lawyer-stripe-integration-pattern
+trigger: "When updating payment features"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Stripe Integration Pattern
+
+## Action
+
+Update server/stripe.ts, modify webhooks, and update UI billing components
+
+## Evidence
+
+- Stripe-payment-integration workflow
+- 5 occurrences per month
+- Files: server/stripe.ts, server/stripeWebhook.ts, client/src/pages/subscriber/Billing.tsx
+
+---
+id: manus-talk-to-my-lawyer-pipeline-updates
+trigger: "When modifying letter generation pipeline"
+confidence: 0.89
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Pipeline Updates
+
+## Action
+
+Update server/pipeline.ts logic and corresponding status UI components
+
+## Evidence
+
+- Pipeline-processing-updates workflow
+- 8 occurrences per month
+- Files: server/pipeline.ts, client/src/components/shared/StatusTimeline.tsx
+
+---
+id: manus-talk-to-my-lawyer-comprehensive-testing
+trigger: "When adding new features"
+confidence: 0.87
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Comprehensive Testing
+
+## Action
+
+Create corresponding test files in server/ with unit and integration tests
+
+## Evidence
+
+- Test-suite-expansion workflow
+- 20 occurrences per month
+- Files: server/*.test.ts
+
+---
+id: manus-talk-to-my-lawyer-error-boundaries
+trigger: "When handling errors in React components"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Error Boundaries
+
+## Action
+
+Use error boundaries pattern for error handling
+
+## Evidence
+
+- Error handling style is error-boundaries
+- errorBoundaries: true configuration
+
+---
+id: manus-talk-to-my-lawyer-type-based-organization
+trigger: "When organizing code modules"
+confidence: 0.75
+domain: architecture
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Type Based Organization
+
+## Action
+
+Organize modules by type rather than feature
+
+## Evidence
+
+- Module organization is type-based
+- Folder structure shows client/server separation
+
+---
+id: manus-talk-to-my-lawyer-todo-updates
+trigger: "When completing major features"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: jamilahmedansari/manus-talk-to-my-lawyer
+---
+
+# Manus Talk To My Lawyer Todo Updates
+
+## Action
+
+Update todo.md with next phase items and progress
+
+## Evidence
+
+- chore: update todo.md with Phase 22 freemium model items
+- todo.md appears in major-feature-development workflow
+
