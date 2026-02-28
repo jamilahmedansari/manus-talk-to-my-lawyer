@@ -5,10 +5,44 @@
 
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
-import { getDb, countCompletedLetters } from "./db";
+import { getDb, countCompletedLetters, getDiscountCodeByCode } from "./db";
 import { subscriptions } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { PLANS, getPlanConfig, LETTER_UNLOCK_PRICE_CENTS, MONTHLY_BASIC_PRICE_CENTS, MONTHLY_PRO_PRICE_CENTS } from "./stripe-products";
+
+/**
+ * Resolves a discount code from our DB into a Stripe coupon ID.
+ * Creates a Stripe coupon on-the-fly if the code is valid and active.
+ * Returns the coupon ID or null if the code is invalid/expired.
+ */
+async function resolveStripeCoupon(discountCode: string | undefined): Promise<string | null> {
+  if (!discountCode) return null;
+  try {
+    const code = await getDiscountCodeByCode(discountCode);
+    if (!code || !code.isActive) return null;
+    if (code.maxUses && code.usageCount >= code.maxUses) return null;
+    if (code.expiresAt && new Date(code.expiresAt) < new Date()) return null;
+
+    const stripe = getStripe();
+    // Use a deterministic coupon ID so we reuse the same Stripe coupon for the same discount %
+    const couponId = `ttml_${code.discountPercent}pct`;
+    try {
+      await stripe.coupons.retrieve(couponId);
+    } catch {
+      // Coupon doesn't exist yet — create it
+      await stripe.coupons.create({
+        id: couponId,
+        percent_off: code.discountPercent,
+        duration: "once",
+        name: `${code.discountPercent}% Off — Referral Discount`,
+      });
+    }
+    return couponId;
+  } catch (err) {
+    console.error("[Stripe] Failed to resolve discount coupon:", err);
+    return null;
+  }
+}
 
 // ─── Stripe Client ───────────────────────────────────────────────────────────
 let _stripe: Stripe | null = null;
@@ -72,11 +106,17 @@ export async function createCheckoutSession(params: {
   const stripe = getStripe();
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
+  // Resolve discount code to a Stripe coupon
+  const stripeCouponId = await resolveStripeCoupon(discountCode);
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: customerId,
     client_reference_id: userId.toString(),
     payment_method_types: ["card"],
-    allow_promotion_codes: true,
+    // Only allow Stripe's built-in promo codes if no custom discount is applied
+    ...(stripeCouponId
+      ? { discounts: [{ coupon: stripeCouponId }] }
+      : { allow_promotion_codes: true }),
     metadata: {
       user_id: userId.toString(),
       plan_id: planId,
@@ -349,11 +389,17 @@ export async function createLetterUnlockCheckout(params: {
   const stripe = getStripe();
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
+  // Resolve discount code to a Stripe coupon
+  const stripeCouponId = await resolveStripeCoupon(discountCode);
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     client_reference_id: userId.toString(),
     mode: "payment",
     payment_method_types: ["card"],
+    ...(stripeCouponId
+      ? { discounts: [{ coupon: stripeCouponId }] }
+      : { allow_promotion_codes: true }),
     metadata: {
       user_id: userId.toString(),
       plan_id: "per_letter",

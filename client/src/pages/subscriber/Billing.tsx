@@ -87,7 +87,7 @@ function PaymentHistorySection({ portalMutate }: { portalMutate: () => void }) {
         ) : (
           <div className="divide-y divide-border">
             {payments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between py-3 gap-4">
+              <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 gap-2 sm:gap-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">{p.description}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(p.created)}</p>

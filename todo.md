@@ -996,3 +996,14 @@
 - [x] Remove MySQL from tests: supabase-migration.test.ts TiDB URL test data replaced with generic PostgreSQL URL
 - [x] Deleted all 40 stale .manus/db log files containing TiDB/MySQL error output
 - [x] Save checkpoint and push to GitHub
+
+## Phase 82: Discount Codes, First-Letter-Free, Mobile Responsiveness
+
+- [x] Create DiscountCodeInput reusable component
+- [x] Update Pricing page with discount code input, URL param support (?code=XXX), and discounted price display
+- [x] Update LetterPaywall component with discount code support (uses DiscountCodeInput + free-unlock CTA)
+- [x] Update Stripe checkout functions to apply discount codes (Stripe coupons created on-the-fly from DB discount %)
+- [x] Fix Stripe webhook to track commissions with discount codes (already working — verified in audit)
+- [x] Verify first letter free flow works correctly (checkPaywallStatus + freeUnlock + LetterPaywall green CTA)
+- [x] Add mobile responsiveness fixes for key pages (SubmitLetter step overflow, Billing rows, AllLetters filters, employee Dashboard grid, scrollbar-thin utility, safe-area padding)
+- [x] Test all user flows end-to-end (65 new tests in phase82-discount-mobile.test.ts, 573 total passing)

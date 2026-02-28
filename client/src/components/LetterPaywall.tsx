@@ -1,21 +1,21 @@
 /**
  * LetterPaywall — shown when a letter is in `generated_locked` status.
  *
- * Simplified flow (Phase 69):
+ * Simplified flow (Phase 69 + Phase 82):
  *   - Every letter ends at generated_locked after the AI pipeline.
  *   - Subscriber sees the first ~35% of the draft clearly; the rest is blurred.
- *   - Single CTA: pay $200 to submit for attorney review.
- *   - Promo code field reduces the price via Stripe discount.
+ *   - If eligible for free first letter → "Submit for Free Review" CTA
+ *   - Otherwise → $200 CTA with optional promo code discount
  *   - Stripe webhook transitions generated_locked → pending_review on payment.
  */
 import { useState } from "react";
 import {
-  Lock, CheckCircle, ArrowRight, Shield, Gavel, Tag, X,
-  FileText, Eye, EyeOff,
+  Lock, CheckCircle, ArrowRight, Shield, Gavel,
+  FileText, Eye, EyeOff, Gift, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DiscountCodeInput, type DiscountCodeResult } from "@/components/DiscountCodeInput";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
@@ -30,49 +30,26 @@ interface LetterPaywallProps {
 export function LetterPaywall({ letterId, draftContent }: LetterPaywallProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<DiscountCodeResult | null>(null);
 
-  // Promo code state
-  const [promoInput, setPromoInput] = useState("");
-  const [appliedCode, setAppliedCode] = useState<string | null>(null);
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
-  const [promoError, setPromoError] = useState<string | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
+  // Check if user is eligible for free first letter
+  const paywallStatus = trpc.billing.checkPaywallStatus.useQuery(undefined, {
+    staleTime: 30_000,
+  });
 
-  // Promo code validation
-  const validateCodeQuery = trpc.affiliate.validateCode.useQuery(
-    { code: promoInput.trim().toUpperCase() },
-    { enabled: false }
-  );
+  const isFreeEligible = paywallStatus.data?.state === "free";
+  const isSubscribed = paywallStatus.data?.state === "subscribed";
 
-  const handleApplyPromo = async () => {
-    const code = promoInput.trim().toUpperCase();
-    if (!code) return;
-    setPromoLoading(true);
-    setPromoError(null);
-    try {
-      const result = await validateCodeQuery.refetch();
-      if (result.data?.valid) {
-        setAppliedCode(code);
-        setAppliedDiscount(result.data.discountPercent);
-        toast.success(`Promo code applied — ${result.data.discountPercent}% off!`);
-      } else {
-        setPromoError("Invalid or expired promo code.");
-        setAppliedCode(null);
-        setAppliedDiscount(0);
-      }
-    } catch {
-      setPromoError("Could not validate code. Please try again.");
-    } finally {
-      setPromoLoading(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setAppliedCode(null);
-    setAppliedDiscount(0);
-    setPromoInput("");
-    setPromoError(null);
-  };
+  // Free unlock mutation
+  const freeUnlockMutation = trpc.billing.freeUnlock.useMutation({
+    onSuccess: () => {
+      toast.success("Your letter has been submitted for free attorney review!");
+      window.location.reload();
+    },
+    onError: (err) => {
+      toast.error("Could not submit for free review", { description: err.message });
+    },
+  });
 
   // $200 pay-per-letter checkout
   const payToUnlock = trpc.billing.payToUnlock.useMutation({
@@ -88,7 +65,7 @@ export function LetterPaywall({ letterId, draftContent }: LetterPaywallProps) {
     },
   });
 
-  const isPending = payToUnlock.isPending || isRedirecting;
+  const isPending = payToUnlock.isPending || isRedirecting || freeUnlockMutation.isPending;
 
   // Split draft into visible (first ~35%) and blurred remainder
   const previewLines = draftContent?.split("\n") ?? [];
@@ -97,9 +74,24 @@ export function LetterPaywall({ letterId, draftContent }: LetterPaywallProps) {
   const blurredText = previewLines.slice(visibleLineCount).join("\n");
   const hasDraft = previewLines.length > 0;
 
-  const discountedPrice = appliedDiscount > 0
-    ? Math.round(200 * (1 - appliedDiscount / 100))
+  const basePrice = 200;
+  const discountedPrice = appliedDiscount
+    ? Math.round(basePrice * (1 - appliedDiscount.discountPercent / 100))
     : null;
+
+  // If subscribed, auto-unlock (this shouldn't normally show, but handle gracefully)
+  if (isSubscribed) {
+    return (
+      <Card className="border-emerald-200 bg-emerald-50/30">
+        <CardContent className="p-5 text-center">
+          <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-emerald-800">
+            You have an active subscription — this letter will be submitted for review automatically.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -171,127 +163,138 @@ export function LetterPaywall({ letterId, draftContent }: LetterPaywallProps) {
         </Card>
       )}
 
-      {/* ── Attorney Review CTA ── */}
-      <div className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-start gap-4 mb-5">
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-            <Gavel className="w-6 h-6 text-white" />
+      {/* ── FREE FIRST LETTER CTA ── */}
+      {isFreeEligible && (
+        <div className="bg-gradient-to-r from-emerald-700 to-emerald-500 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Gift className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold leading-tight">Your First Letter is Free!</h2>
+              <p className="text-sm text-white/80 mt-1">
+                Submit your letter for professional attorney review at no cost.
+                A licensed attorney will review, edit, and approve your letter.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-bold leading-tight">Submit for Attorney Review</h2>
-            <p className="text-sm text-white/80 mt-1">
-              A licensed attorney will review your draft, make any necessary edits, and approve the final letter.
-              You receive the professionally formatted PDF once approved.
-            </p>
-          </div>
-        </div>
 
-        {/* What's included */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-          {[
-            { icon: Shield, text: "Licensed attorney review" },
-            { icon: CheckCircle, text: "Edits & approval included" },
-            { icon: FileText, text: "Professional PDF delivered" },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
-              <Icon className="w-4 h-4 text-white/80 flex-shrink-0" />
-              <span className="text-xs text-white/90">{text}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Promo code */}
-        <div className="bg-white/10 border border-white/20 rounded-xl p-4 mb-4 space-y-2">
-          <p className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
-            <Tag className="w-3.5 h-3.5" />
-            Have a promo code?
-          </p>
-          {appliedCode ? (
-            <div className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/40 rounded-lg px-3 py-2">
-              <CheckCircle className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-              <span className="text-sm font-semibold text-white flex-1">
-                {appliedCode} — {appliedDiscount}% off applied
-              </span>
-              <button
-                onClick={handleRemovePromo}
-                className="text-white/60 hover:text-white transition-colors"
-                aria-label="Remove promo code"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                value={promoInput}
-                onChange={(e) => {
-                  setPromoInput(e.target.value.toUpperCase());
-                  setPromoError(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
-                placeholder="Enter code (e.g. SAVE20)"
-                className="h-9 text-sm font-mono uppercase tracking-wider bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                maxLength={32}
-              />
-              <Button
-                onClick={handleApplyPromo}
-                disabled={!promoInput.trim() || promoLoading}
-                variant="outline"
-                size="sm"
-                className="h-9 px-4 bg-white/10 border-white/30 text-white hover:bg-white/20 whitespace-nowrap"
-              >
-                {promoLoading ? (
-                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : (
-                  "Apply"
-                )}
-              </Button>
-            </div>
-          )}
-          {promoError && (
-            <p className="text-xs text-red-300 flex items-center gap-1">
-              <X className="w-3 h-3" />
-              {promoError}
-            </p>
-          )}
-        </div>
-
-        {/* Price + CTA */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            {discountedPrice !== null ? (
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white">${discountedPrice}</span>
-                <span className="text-lg text-white/50 line-through">${200}</span>
-                <span className="text-sm text-emerald-300 font-semibold">{appliedDiscount}% off</span>
+          {/* What's included */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+            {[
+              { icon: Shield, text: "Licensed attorney review" },
+              { icon: CheckCircle, text: "Edits & approval included" },
+              { icon: FileText, text: "Professional PDF delivered" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                <Icon className="w-4 h-4 text-white/80 flex-shrink-0" />
+                <span className="text-xs text-white/90">{text}</span>
               </div>
-            ) : (
-              <span className="text-3xl font-extrabold text-white">$200</span>
-            )}
-            <p className="text-xs text-white/60 mt-0.5">One-time · Includes attorney review + PDF</p>
+            ))}
           </div>
 
-          <Button
-            onClick={() => payToUnlock.mutate({ letterId, discountCode: appliedCode ?? undefined })}
-            disabled={isPending}
-            size="lg"
-            className="bg-white text-blue-800 hover:bg-white/90 font-bold shadow-md w-full sm:w-auto"
-          >
-            {isPending ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-800 rounded-full animate-spin" />
-                Preparing checkout...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Gavel className="w-4 h-4" />
-                Pay & Submit for Review
-                <ArrowRight className="w-4 h-4" />
-              </span>
-            )}
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <span className="text-3xl font-extrabold text-white">$0</span>
+              <p className="text-xs text-white/60 mt-0.5">Free · Includes attorney review + PDF</p>
+            </div>
+            <Button
+              onClick={() => freeUnlockMutation.mutate({ letterId })}
+              disabled={freeUnlockMutation.isPending}
+              size="lg"
+              className="bg-white text-emerald-800 hover:bg-white/90 font-bold shadow-md w-full sm:w-auto"
+            >
+              {freeUnlockMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Gift className="w-4 h-4" />
+                  Submit for Free Review
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── PAID ATTORNEY REVIEW CTA (shown when NOT free-eligible) ── */}
+      {!isFreeEligible && !isSubscribed && (
+        <div className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Gavel className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold leading-tight">Submit for Attorney Review</h2>
+              <p className="text-sm text-white/80 mt-1">
+                A licensed attorney will review your draft, make any necessary edits, and approve the final letter.
+                You receive the professionally formatted PDF once approved.
+              </p>
+            </div>
+          </div>
+
+          {/* What's included */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+            {[
+              { icon: Shield, text: "Licensed attorney review" },
+              { icon: CheckCircle, text: "Edits & approval included" },
+              { icon: FileText, text: "Professional PDF delivered" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                <Icon className="w-4 h-4 text-white/80 flex-shrink-0" />
+                <span className="text-xs text-white/90">{text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Promo code — reusable component */}
+          <DiscountCodeInput
+            variant="dark"
+            className="mb-4"
+            onCodeChange={(result) => setAppliedDiscount(result)}
+          />
+
+          {/* Price + CTA */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              {discountedPrice !== null ? (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-extrabold text-white">${discountedPrice}</span>
+                  <span className="text-lg text-white/50 line-through">${basePrice}</span>
+                  <span className="text-sm text-emerald-300 font-semibold">{appliedDiscount!.discountPercent}% off</span>
+                </div>
+              ) : (
+                <span className="text-3xl font-extrabold text-white">${basePrice}</span>
+              )}
+              <p className="text-xs text-white/60 mt-0.5">One-time · Includes attorney review + PDF</p>
+            </div>
+
+            <Button
+              onClick={() => payToUnlock.mutate({ letterId, discountCode: appliedDiscount?.code ?? undefined })}
+              disabled={isPending}
+              size="lg"
+              className="bg-white text-blue-800 hover:bg-white/90 font-bold shadow-md w-full sm:w-auto"
+            >
+              {isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Preparing checkout...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Gavel className="w-4 h-4" />
+                  Pay & Submit for Review
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

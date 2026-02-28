@@ -1,18 +1,21 @@
+import { useState, useMemo } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DiscountCodeInput, type DiscountCodeResult } from "@/components/DiscountCodeInput";
 import { trpc } from "@/lib/trpc";
 import { CheckCircle2, Loader2, Scale, Shield, Zap, Gift } from "lucide-react";
 import { toast } from "sonner";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { PRICING } from "../../../shared/pricing";
 
 const PLANS = [
   {
     id: PRICING.freeTrial.id,
     name: PRICING.freeTrial.name,
-    price: PRICING.freeTrial.priceDisplay,
+    priceDisplay: PRICING.freeTrial.priceDisplay,
+    priceNumeric: PRICING.freeTrial.price,
     period: PRICING.freeTrial.period,
     reviewFee: "Attorney review included",
     description: PRICING.freeTrial.description,
@@ -25,7 +28,8 @@ const PLANS = [
   {
     id: PRICING.perLetter.id,
     name: PRICING.perLetter.name,
-    price: PRICING.perLetter.priceDisplay,
+    priceDisplay: PRICING.perLetter.priceDisplay,
+    priceNumeric: PRICING.perLetter.price,
     period: PRICING.perLetter.period,
     reviewFee: "Attorney review included",
     description: PRICING.perLetter.description,
@@ -38,7 +42,8 @@ const PLANS = [
   {
     id: PRICING.monthlyBasic.id,
     name: PRICING.monthlyBasic.name,
-    price: PRICING.monthlyBasic.priceDisplay,
+    priceDisplay: PRICING.monthlyBasic.priceDisplay,
+    priceNumeric: PRICING.monthlyBasic.price,
     period: PRICING.monthlyBasic.period,
     reviewFee: "Attorney review included",
     description: PRICING.monthlyBasic.description,
@@ -51,7 +56,8 @@ const PLANS = [
   {
     id: PRICING.monthlyPro.id,
     name: PRICING.monthlyPro.name,
-    price: PRICING.monthlyPro.priceDisplay,
+    priceDisplay: PRICING.monthlyPro.priceDisplay,
+    priceNumeric: PRICING.monthlyPro.price,
     period: PRICING.monthlyPro.period,
     reviewFee: "Attorney review included",
     description: PRICING.monthlyPro.description,
@@ -66,6 +72,16 @@ const PLANS = [
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const searchString = useSearch();
+
+  // Extract ?code= URL parameter
+  const urlCode = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get("code") ?? undefined;
+  }, [searchString]);
+
+  // Discount code state
+  const [appliedDiscount, setAppliedDiscount] = useState<DiscountCodeResult | null>(null);
 
   const checkoutMutation = trpc.billing.createCheckout.useMutation({
     onSuccess: (data) => {
@@ -86,7 +102,16 @@ export default function Pricing() {
       navigate("/submit-letter");
       return;
     }
-    checkoutMutation.mutate({ planId });
+    checkoutMutation.mutate({
+      planId,
+      discountCode: appliedDiscount?.code,
+    });
+  };
+
+  // Calculate discounted prices for display
+  const getDiscountedPrice = (priceNumeric: number) => {
+    if (!appliedDiscount || priceNumeric === 0) return null;
+    return Math.round(priceNumeric * (1 - appliedDiscount.discountPercent / 100));
   };
 
   return (
@@ -130,8 +155,18 @@ export default function Pricing() {
                 </div>
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground ml-2">{plan.period}</span>
+                  {!plan.isFree && appliedDiscount ? (
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="text-4xl font-bold text-foreground">
+                        ${getDiscountedPrice(plan.priceNumeric)}
+                      </span>
+                      <span className="text-lg text-muted-foreground line-through">{plan.priceDisplay}</span>
+                      <span className="text-xs text-emerald-600 font-semibold">{appliedDiscount.discountPercent}% off</span>
+                    </div>
+                  ) : (
+                    <span className="text-4xl font-bold text-foreground">{plan.priceDisplay}</span>
+                  )}
+                  <span className="text-muted-foreground ml-1">{plan.period}</span>
                 </div>
                 {plan.reviewFee && (
                   <p className={`text-xs mt-1 font-medium ${plan.isFree ? "text-emerald-600" : "text-emerald-600"}`}>
@@ -163,6 +198,21 @@ export default function Pricing() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Discount Code Section */}
+        <div className="mt-10 max-w-md mx-auto">
+          <DiscountCodeInput
+            variant="light"
+            initialCode={urlCode}
+            onCodeChange={(result) => setAppliedDiscount(result)}
+            label="Have a promo or referral code?"
+          />
+          {appliedDiscount && (
+            <p className="text-center text-sm text-emerald-600 font-medium mt-2">
+              {appliedDiscount.discountPercent}% discount will be applied to all paid plans below.
+            </p>
+          )}
         </div>
 
         {/* How it works note */}
