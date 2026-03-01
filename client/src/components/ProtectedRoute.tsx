@@ -37,10 +37,12 @@ export function isRoleAllowedOnPath(role: string, path: string): boolean {
     );
   }
   if (role === "employee") {
-    return path.startsWith("/employee");
+    // employees can access their own portal and the review interface (same as attorney)
+    return path.startsWith("/employee") || path.startsWith("/review");
   }
   if (role === "attorney") {
-    return path.startsWith("/attorney") || path.startsWith("/review");
+    // attorneys can access the attorney portal, review interface, and /employee/letters alias
+    return path.startsWith("/attorney") || path.startsWith("/review") || path.startsWith("/employee/letters");
   }
   return false;
 }

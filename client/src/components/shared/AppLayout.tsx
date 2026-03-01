@@ -52,6 +52,7 @@ function getNavItems(role: string): NavItem[] {
   if (role === "employee") {
     return [
       { label: "Dashboard", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
+      { label: "Review Queue", href: "/review/queue", icon: <ClipboardList className="w-4 h-4" /> },
       { label: "My Referrals", href: "/employee/referrals", icon: <Users className="w-4 h-4" /> },
       { label: "Earnings", href: "/employee/earnings", icon: <CreditCard className="w-4 h-4" /> },
       { label: "Settings", href: "/profile", icon: <Settings className="w-4 h-4" /> },

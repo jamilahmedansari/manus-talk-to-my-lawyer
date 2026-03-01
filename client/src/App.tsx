@@ -62,6 +62,7 @@ const ReviewQueue = lazy(() => import("./pages/employee/ReviewQueue"));
 const ReviewDetail = lazy(() => import("./pages/employee/ReviewDetail"));
 
 // ─── Lazy-loaded: Employee/Affiliate pages ───
+const EmployeeDashboard = lazy(() => import("./pages/employee/Dashboard"));
 const EmployeeAffiliateDashboard = lazy(() => import("./pages/employee/AffiliateDashboard"));
 
 // ─── Lazy-loaded: Admin pages ───
@@ -122,6 +123,14 @@ function Router() {
           </Suspense>
         </ProtectedRoute>
       </Route>
+      {/* Alias: /dashboard/new → /submit (matches spec route map) */}
+      <Route path="/dashboard/new">
+        <ProtectedRoute allowedRoles={["subscriber"]}>
+          <Suspense fallback={<SubmitLetterSkeleton />}>
+            <SubmitLetter />
+          </Suspense>
+        </ProtectedRoute>
+      </Route>
       <Route path="/submit">
         <ProtectedRoute allowedRoles={["subscriber"]}>
           <Suspense fallback={<SubmitLetterSkeleton />}>
@@ -137,6 +146,14 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/letters/:id">
+        <ProtectedRoute allowedRoles={["subscriber"]}>
+          <Suspense fallback={<LetterDetailSkeleton />}>
+            <LetterDetail />
+          </Suspense>
+        </ProtectedRoute>
+      </Route>
+      {/* Alias: /dashboard/letters/:id → /letters/:id (matches spec route map) */}
+      <Route path="/dashboard/letters/:id">
         <ProtectedRoute allowedRoles={["subscriber"]}>
           <Suspense fallback={<LetterDetailSkeleton />}>
             <LetterDetail />
@@ -167,21 +184,21 @@ function Router() {
 
       {/* ═══ Attorney — Review Center (attorney + admin) ═══ */}
       <Route path="/attorney">
-        <ProtectedRoute allowedRoles={["attorney", "admin"]}>
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
           <Suspense fallback={<AttorneyDashboardSkeleton />}>
             <AttorneyDashboard />
           </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/attorney/queue">
-        <ProtectedRoute allowedRoles={["attorney", "admin"]}>
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
           <Suspense fallback={<ReviewQueueSkeleton />}>
             <ReviewQueue />
           </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/attorney/:id">
-        <ProtectedRoute allowedRoles={["attorney", "admin"]}>
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
           <Suspense fallback={<ReviewDetailSkeleton />}>
             <ReviewDetail />
           </Suspense>
@@ -189,21 +206,29 @@ function Router() {
       </Route>
       {/* Backward-compatible /review/* aliases */}
       <Route path="/review">
-        <ProtectedRoute allowedRoles={["attorney", "admin"]}>
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
           <Suspense fallback={<AttorneyDashboardSkeleton />}>
             <AttorneyDashboard />
           </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/review/queue">
-        <ProtectedRoute allowedRoles={["attorney", "admin"]}>
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
           <Suspense fallback={<ReviewQueueSkeleton />}>
             <ReviewQueue />
           </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/review/:id">
-        <ProtectedRoute allowedRoles={["attorney", "admin"]}>
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
+          <Suspense fallback={<ReviewDetailSkeleton />}>
+            <ReviewDetail />
+          </Suspense>
+        </ProtectedRoute>
+      </Route>
+      {/* Alias: /employee/letters/:id → /review/:id (matches spec route map) */}
+      <Route path="/employee/letters/:id">
+        <ProtectedRoute allowedRoles={["attorney", "employee", "admin"]}>
           <Suspense fallback={<ReviewDetailSkeleton />}>
             <ReviewDetail />
           </Suspense>
@@ -211,10 +236,11 @@ function Router() {
       </Route>
 
       {/* ═══ Employee/Affiliate ═══ */}
+      {/* /employee → review-focused dashboard (queue stats + pending letters) */}
       <Route path="/employee">
         <ProtectedRoute allowedRoles={["employee", "admin"]}>
           <Suspense fallback={<EmployeeDashboardSkeleton />}>
-            <EmployeeAffiliateDashboard />
+            <EmployeeDashboard />
           </Suspense>
         </ProtectedRoute>
       </Route>

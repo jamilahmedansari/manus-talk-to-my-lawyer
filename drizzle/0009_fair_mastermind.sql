@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "uq_commission_ledger_stripe_pi" ON "commission_ledger" USING btree ("stripe_payment_intent_id");

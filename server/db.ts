@@ -582,13 +582,25 @@ export async function getSystemStats() {
   const [failedJobs] = await db.select({ count: sql<number>`count(*)` }).from(workflowJobs).where(eq(workflowJobs.status, "failed"));
   const [totalUsers] = await db.select({ count: sql<number>`count(*)` }).from(users);
   const [subscribers] = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, "subscriber"));
+  // Per-status breakdown for admin dashboard charts
+  const statusRows = await db
+    .select({ status: letterRequests.status, count: sql<number>`count(*)` })
+    .from(letterRequests)
+    .groupBy(letterRequests.status);
+  const byStatus: Record<string, number> = {};
+  for (const row of statusRows) {
+    byStatus[row.status] = Number(row.count);
+  }
+  const approvedLetters = Number(approved?.count ?? 0);
   return {
     totalLetters: Number(totalLetters?.count ?? 0),
     pendingReview: Number(pendingReview?.count ?? 0),
-    approved: Number(approved?.count ?? 0),
+    approved: approvedLetters,
+    approvedLetters,
     failedJobs: Number(failedJobs?.count ?? 0),
     totalUsers: Number(totalUsers?.count ?? 0),
     subscribers: Number(subscribers?.count ?? 0),
+    byStatus,
   };
 }
 

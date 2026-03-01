@@ -93,9 +93,11 @@ const employeeProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+// Per architecture decision: employees are a subtype of attorney with elevated permissions.
+// Both attorney and employee roles can access the review queue and perform review actions.
 const attorneyProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "attorney" && ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Attorney or Admin access required" });
+  if (ctx.user.role !== "attorney" && ctx.user.role !== "employee" && ctx.user.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Attorney, Employee, or Admin access required" });
   }
   return next({ ctx });
 });
@@ -650,6 +652,21 @@ export const appRouter = router({
         return { success: true, message: `Retry started for stage: ${input.stage}` };
       }),
 
+    triggerPipeline: adminProcedure
+      .input(z.object({ letterId: z.number() }))
+      .mutation(async ({ input }) => {
+        const letter = await getLetterRequestById(input.letterId);
+        if (!letter) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!letter.intakeJson) throw new TRPCError({ code: "BAD_REQUEST", message: "No intake data found for this letter" });
+        // Allow re-triggering from submitted or failed states
+        const allowedStatuses = ["submitted", "researching", "drafting"];
+        if (!allowedStatuses.includes(letter.status as string)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Cannot trigger pipeline for letter in status: ${letter.status}` });
+        }
+        runFullPipeline(input.letterId, letter.intakeJson as any).catch(console.error);
+        return { success: true, message: `Full pipeline triggered for letter #${input.letterId}` };
+      }),
+
     purgeFailedJobs: adminProcedure
       .mutation(async () => {
         const result = await purgeFailedJobs();
@@ -891,7 +908,7 @@ export const appRouter = router({
         return { success: true, free: true };
       }),
 
-     // ─── Pay Trial Review: generated_unlocked → Stripe $50 checkout for first-letter attorney review ───
+     // ─── Pay Trial Review: generated_locked → Stripe $50 checkout for first-letter attorney review ───
     payTrialReview: subscriberProcedure
       .input(z.object({ letterId: z.number(), discountCode: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
@@ -899,8 +916,9 @@ export const appRouter = router({
         await checkTrpcRateLimit("payment", `user:${ctx.user.id}`);
         const letter = await getLetterRequestSafeForSubscriber(input.letterId, ctx.user.id);
         if (!letter) throw new TRPCError({ code: "NOT_FOUND", message: "Letter not found" });
-        if (letter.status !== "generated_unlocked")
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Letter is not in generated_unlocked status" });
+        // Accept both generated_locked (canonical) and generated_unlocked (legacy)
+        if (letter.status !== "generated_locked" && letter.status !== "generated_unlocked")
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Letter must be in generated_locked status to submit for review" });
         const origin = getAppUrl(ctx.req);
         const result = await createTrialReviewCheckout({
           userId: ctx.user.id,
