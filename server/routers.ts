@@ -115,7 +115,7 @@ function getAppUrl(req: { protocol: string; headers: Record<string, string | str
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
     return `${proto}://${host}`;
   }
-  return "https://www.talk-to-my-lawyer.com";
+  return process.env.APP_BASE_URL ?? "https://www.talk-to-my-lawyer.com";
 }
 
 // ═══════════════════════════════════════════════════════

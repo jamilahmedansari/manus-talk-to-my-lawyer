@@ -129,7 +129,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                   const subscriber = await getUserById(userId);
                   if (subscriber?.email) {
                     const origin = session.success_url?.split('/letters')[0]
-                      ?? `https://${process.env.VITE_APP_ID ?? 'app'}.manus.space`;
+                      ?? process.env.APP_BASE_URL ?? 'https://www.talk-to-my-lawyer.com';
                     await sendLetterUnlockedEmail({
                       to: subscriber.email,
                       name: subscriber.name ?? "Subscriber",
@@ -172,7 +172,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                           if (employee?.email) {
                             const planCfg = getPlanConfig(planId);
                             const appUrl = session.success_url?.split('/letters')[0]
-                              ?? `https://${process.env.VITE_APP_ID ?? 'app'}.manus.space`;
+                              ?? process.env.APP_BASE_URL ?? 'https://www.talk-to-my-lawyer.com';
                             await sendEmployeeCommissionEmail({
                               to: employee.email,
                               name: employee.name ?? "Employee",
@@ -238,7 +238,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                     if (employee?.email) {
                       const planCfg = getPlanConfig(planId);
                       const appUrl = session.success_url?.split('/letters')[0]
-                        ?? `https://${process.env.VITE_APP_ID ?? 'app'}.manus.space`;
+                        ?? process.env.APP_BASE_URL ?? 'https://www.talk-to-my-lawyer.com';
                       await sendEmployeeCommissionEmail({
                         to: employee.email,
                         name: employee.name ?? "Employee",
