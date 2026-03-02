@@ -28,6 +28,7 @@ import { buildNormalizedPromptInput, type NormalizedPromptInput } from "./intake
 import { sendLetterReadyEmail } from "./email";
 import { getUserById, getLetterRequestById as getLetterById } from "./db";
 import { hasActiveRecurringSubscription } from "./stripe";
+import { captureServerException, addServerBreadcrumb } from "./sentry";
 
 // ═══════════════════════════════════════════════════════
 // MODEL PROVIDERS
@@ -290,6 +291,10 @@ export async function runResearchStage(letterId: number, intake: IntakeJson): Pr
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[Pipeline] Stage 1 failed for letter #${letterId}:`, msg);
+    captureServerException(err, {
+      tags: { pipeline_stage: "research", letter_id: String(letterId) },
+      extra: { researchRunId: runId, jobId, errorMessage: msg },
+    });
     await updateResearchRun(runId, { status: "failed", errorMessage: msg });
     await updateWorkflowJob(jobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     throw err;
@@ -373,13 +378,16 @@ export async function runDraftingStage(letterId: number, intake: IntakeJson, res
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[Pipeline] Stage 2 failed for letter #${letterId}:`, msg);
+    captureServerException(err, {
+      tags: { pipeline_stage: "drafting", letter_id: String(letterId) },
+      extra: { jobId, errorMessage: msg },
+    });
     await updateWorkflowJob(jobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     throw err;
   }
 }
-
 // ═══════════════════════════════════════════════════════
-// STAGE 3: CLAUDE FINAL LETTER ASSEMBLY
+// STAGE 3: CLAUDE FINAL LETTER ASSEMBLYY
 // ═══════════════════════════════════════════════════════
 
 export async function runAssemblyStage(
@@ -440,32 +448,17 @@ export async function runAssemblyStage(
     await updateLetterVersionPointers(letterId, { currentAiDraftVersionId: versionId });
     await updateWorkflowJob(jobId, { status: "completed", completedAt: new Date(), responsePayloadJson: { versionId } });
 
-    // Determine final status based on subscription and first-letter eligibility
+    // Pipeline always ends at generated_locked — subscriber sees blurred draft and pays $200 to send for attorney review.
+    // Subscribers with active plans also land here; the paywall will offer them a free-unlock path.
     const letterRecord = await getLetterById(letterId);
-    const userId = letterRecord?.userId ?? 0;
-    const isSubscriber = userId > 0 ? await hasActiveRecurringSubscription(userId) : false;
-
-    let finalStatus: string;
-    if (isSubscriber) {
-      // Monthly/annual subscribers bypass the paywall entirely
-      finalStatus = "pending_review";
-    } else {
-      // Check if this is the user's first completed letter (first-letter-free)
-      const { countCompletedLetters } = await import("./db");
-      const completedCount = await countCompletedLetters(userId, letterId);
-      finalStatus = completedCount === 0 ? "generated_unlocked" : "generated_locked";
-    }
+    const finalStatus = "generated_locked";
 
     await updateLetterStatus(letterId, finalStatus);
     await logReviewAction({
       letterRequestId: letterId,
       actorType: "system",
       action: "ai_pipeline_completed",
-      noteText: isSubscriber
-        ? `3-stage pipeline complete. Research (Perplexity) → Draft (Anthropic) → Final Assembly (Anthropic). Letter automatically queued for attorney review (active subscription).`
-        : finalStatus === "generated_unlocked"
-        ? `3-stage pipeline complete. Your first AI draft is ready to read! Send it for attorney review when you're ready.`
-        : `3-stage pipeline complete. Research (Perplexity) → Draft (Anthropic) → Final Assembly (Anthropic). Your letter is ready — unlock it to send for attorney review.`,
+      noteText: `Draft ready. Our legal team has completed research (Perplexity) and drafting (Anthropic). Submit for attorney review to receive your finalised letter.`,
       noteVisibility: "user_visible",
       fromStatus: "drafting",
       toStatus: finalStatus,
@@ -475,9 +468,7 @@ export async function runAssemblyStage(
       const record = letterRecord;
       if (!record) return;
       getUserById(record.userId).then(async (subscriber) => {
-        const appBaseUrl = process.env.VITE_APP_ID
-          ? `https://${process.env.VITE_APP_ID}.manus.space`
-          : "https://talk-to-my-lawyer.manus.space";
+        const appBaseUrl = process.env.APP_BASE_URL ?? "https://www.talk-to-my-lawyer.com";
         if (subscriber?.email) {
           await sendLetterReadyEmail({
             to: subscriber.email,
@@ -485,21 +476,26 @@ export async function runAssemblyStage(
             subject: record.subject,
             letterId,
             appUrl: appBaseUrl,
+            letterType: record.letterType ?? undefined,
+            jurisdictionState: record.jurisdictionState ?? undefined,
           });
           console.log(`[Pipeline] Letter-ready email sent to ${subscriber.email} for letter #${letterId}`);
         }
       }).catch((emailErr) => console.error(`[Pipeline] Failed to send letter-ready email for #${letterId}:`, emailErr));
     })();
-    console.log(`[Pipeline] Stage 3 complete for letter #${letterId} — status: ${finalStatus}${isSubscriber ? " (subscriber bypass)" : " (awaiting payment)"}`);
+    console.log(`[Pipeline] Stage 3 complete for letter #${letterId} — status: ${finalStatus} (awaiting payment/review)`);
     return finalLetter;
-  } catch (err) {
+   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[Pipeline] Stage 3 failed for letter #${letterId}:`, msg);
+    captureServerException(err, {
+      tags: { pipeline_stage: "assembly", letter_id: String(letterId) },
+      extra: { jobId, errorMessage: msg },
+    });
     await updateWorkflowJob(jobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     throw err;
   }
 }
-
 // ═══════════════════════════════════════════════════════
 // FULL PIPELINE ORCHESTRATOR
 // ═══════════════════════════════════════════════════════
@@ -630,6 +626,10 @@ export async function runFullPipeline(letterId: number, intake: IntakeJson, dbFi
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[Pipeline] Full pipeline failed for letter #${letterId}:`, msg);
+    captureServerException(err, {
+      tags: { pipeline_stage: "full_pipeline", letter_id: String(letterId) },
+      extra: { pipelineJobId, errorMessage: msg },
+    });
     await updateWorkflowJob(pipelineJobId, { status: "failed", errorMessage: msg, completedAt: new Date() });
     await updateLetterStatus(letterId, "submitted"); // revert to allow retry
     throw err;

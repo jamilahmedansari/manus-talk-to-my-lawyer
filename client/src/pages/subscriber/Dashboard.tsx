@@ -287,12 +287,12 @@ export default function SubscriberDashboard() {
                 </div>
                 <div>
                   <span className="text-sm font-semibold text-blue-800">
-                    {stats.total === 0 ? "Your first letter is free" : "Upgrade to a subscription"}
+                    {stats.total === 0 ? "Your first letter is free — attorney review included" : "Upgrade to a subscription"}
                   </span>
                   <p className="text-xs text-blue-600 mt-0.5">
                     {stats.total === 0
-                      ? "No credit card required — submit your first legal matter now."
-                      : "Get 4 letters/month for $79 or 48 letters/year for $599. Skip the $200 per-letter fee."}
+                      ? "No credit card required — attorney review included with your first letter."
+                      : "Get 4 letters/month for $499 or 8 letters/month for $699. Skip the $200 per-letter fee."}
                   </p>
                 </div>
               </div>
@@ -374,7 +374,7 @@ export default function SubscriberDashboard() {
                 <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                 <h3 className="text-base font-medium text-foreground mb-2">No letters yet</h3>
                 <p className="text-sm text-muted-foreground mb-6">
-                  Submit your first legal matter and our AI will research and draft a professional
+                  Submit your first legal matter and our attorneys will research and draft a professional
                   letter for attorney review.
                 </p>
                 <Button asChild>
@@ -476,15 +476,15 @@ export default function SubscriberDashboard() {
               {[
                 {
                   status: "submitted",
-                  desc: "Your request has been received and queued for AI processing.",
+                  desc: "Your request has been received and is being prepared for our legal team.",
                 },
                 {
                   status: "researching",
-                  desc: "AI is researching applicable laws, statutes, and jurisdiction rules.",
+                  desc: "Our team is researching applicable laws, statutes, and jurisdiction rules.",
                 },
                 {
                   status: "drafting",
-                  desc: "AI is drafting your professional legal letter using research findings.",
+                  desc: "Our attorneys are drafting your professional legal letter using research findings.",
                 },
                 {
                   status: "generated_locked",
@@ -492,7 +492,7 @@ export default function SubscriberDashboard() {
                 },
                 {
                   status: "generated_unlocked",
-                  desc: "Your first free letter draft is ready to read! Send it for attorney review.",
+                  desc: "Your letter draft is ready to read! Send it for attorney review.",
                 },
                 {
                   status: "pending_review",

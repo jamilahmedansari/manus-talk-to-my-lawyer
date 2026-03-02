@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { getRoleDashboard, isRoleAllowedOnPath } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,14 +11,30 @@ import { trpc } from "@/lib/trpc";
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const search = useSearch();
 
   const utils = trpc.useUtils();
+
+  // Parse ?next= from query string
+  const nextPath = (() => {
+    const params = new URLSearchParams(search);
+    const raw = params.get("next");
+    if (!raw) return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+  })();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +68,9 @@ export default function Login() {
       if (!response.ok) {
         const msg = data.error || "Login failed. Please check your credentials.";
         setError(msg);
+        if (data.code === "EMAIL_NOT_VERIFIED") {
+          setShowResendVerification(true);
+        }
         toast.error(msg);
         setLoading(false);
         return;
@@ -69,12 +89,13 @@ export default function Login() {
         description: "Welcome back. Redirecting to your dashboard.",
       });
 
-      // Role-based redirect
+      // Role-based redirect — honour ?next= if the role is allowed on that path
       const role = data.user?.role ?? data.session?.user?.user_metadata?.role ?? "subscriber";
-      if (role === "admin") navigate("/admin");
-      else if (role === "attorney") navigate("/review");
-      else if (role === "employee") navigate("/employee");
-      else navigate("/dashboard");
+      if (nextPath && isRoleAllowedOnPath(role, nextPath)) {
+        navigate(nextPath);
+      } else {
+        navigate(getRoleDashboard(role));
+      }
     } catch (err: any) {
       const msg = err?.name === 'AbortError'
         ? "Request timed out. Please try again — the server may be warming up."
@@ -102,7 +123,7 @@ export default function Login() {
             </span>
           </Link>
           <p className="text-slate-500 text-sm">
-            AI-powered legal letters with mandatory attorney review
+            Professional legal letters drafted and reviewed by attorneys
           </p>
         </div>
 
@@ -117,9 +138,43 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                  {showResendVerification && (
+                    <div className="mt-2 pt-2 border-t border-red-200">
+                      {resendSent ? (
+                        <p className="text-green-700 text-xs font-medium">Verification email sent! Check your inbox.</p>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={resendLoading}
+                          onClick={async () => {
+                            setResendLoading(true);
+                            try {
+                              const res = await fetch("/api/auth/resend-verification", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ email }),
+                              });
+                              const d = await res.json();
+                              setResendSent(true);
+                              toast.success("Verification email sent", { description: d.message || "Check your inbox." });
+                            } catch {
+                              toast.error("Could not resend email", { description: "Please try again." });
+                            } finally {
+                              setResendLoading(false);
+                            }
+                          }}
+                          className="text-indigo-700 hover:underline text-xs font-medium disabled:opacity-50"
+                        >
+                          {resendLoading ? "Sending…" : "Resend verification email"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

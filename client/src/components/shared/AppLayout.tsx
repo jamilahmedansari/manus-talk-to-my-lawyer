@@ -46,19 +46,23 @@ function getNavItems(role: string): NavItem[] {
       { label: "My Letters", href: "/letters", icon: <FileText className="w-4 h-4" /> },
       { label: "Billing", href: "/subscriber/billing", icon: <CreditCard className="w-4 h-4" /> },
       { label: "Receipts", href: "/subscriber/receipts", icon: <FileText className="w-4 h-4" /> },
+      { label: "Settings", href: "/profile", icon: <Settings className="w-4 h-4" /> },
     ];
   }
   if (role === "employee") {
     return [
       { label: "Dashboard", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
+      { label: "Review Queue", href: "/review/queue", icon: <ClipboardList className="w-4 h-4" /> },
       { label: "My Referrals", href: "/employee/referrals", icon: <Users className="w-4 h-4" /> },
       { label: "Earnings", href: "/employee/earnings", icon: <CreditCard className="w-4 h-4" /> },
+      { label: "Settings", href: "/profile", icon: <Settings className="w-4 h-4" /> },
     ];
   }
   if (role === "attorney") {
     return [
       { label: "Review Center", href: "/attorney", icon: <LayoutDashboard className="w-4 h-4" /> },
       { label: "Queue", href: "/attorney/queue", icon: <ClipboardList className="w-4 h-4" /> },
+      { label: "Settings", href: "/profile", icon: <Settings className="w-4 h-4" /> },
     ];
   }
   if (role === "admin") {
@@ -69,6 +73,7 @@ function getNavItems(role: string): NavItem[] {
       { label: "Review Center", href: "/review", icon: <ClipboardList className="w-4 h-4" /> },
       { label: "Affiliate Program", href: "/admin/affiliate", icon: <Briefcase className="w-4 h-4" /> },
       { label: "Failed Jobs", href: "/admin/jobs", icon: <AlertCircle className="w-4 h-4" /> },
+      { label: "Settings", href: "/profile", icon: <Settings className="w-4 h-4" /> },
     ];
   }
   return [];

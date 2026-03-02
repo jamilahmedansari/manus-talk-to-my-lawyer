@@ -20,4 +20,11 @@ export const ENV = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",
+  // Upstash Redis (rate limiting)
+  upstashRedisRestUrl: process.env.UPSTASH_REDIS_REST_URL ?? "",
+  upstashRedisRestToken: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+  // Sentry
+  sentryDsn: process.env.SENTRY_DSN ?? "",
+  sentryOrg: process.env.SENTRY_ORG ?? "",
+  sentryProject: process.env.SENTRY_PROJECT ?? "",
 };

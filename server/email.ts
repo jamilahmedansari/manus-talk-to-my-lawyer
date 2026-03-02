@@ -6,7 +6,14 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-init: do NOT construct at module load time — undefined key throws and crashes test imports
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@resend.dev";
 const APP_NAME = "Talk to My Lawyer";
 const BRAND_COLOR = "#2563EB"; // blue-600
@@ -181,7 +188,7 @@ async function sendEmail(opts: {
   text: string;
 }): Promise<void> {
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: FROM,
       to: opts.to,
       subject: opts.subject,
@@ -422,7 +429,8 @@ export async function sendStatusUpdateEmail(opts: {
 /** Validate Resend credentials (used in tests) */
 export async function validateResendCredentials(): Promise<boolean> {
   try {
-    const { data, error } = await resend.domains.list();
+    const r = getResend();
+    const { data, error } = await r.domains.list();
     return !error;
   } catch {
     return false;
@@ -485,44 +493,97 @@ export async function sendLetterSubmissionEmail(opts: {
   });
 }
 
-/** Notify subscriber that their AI draft is ready and they can unlock it for attorney review */
+/** Notify subscriber that their draft is ready and they can submit it for $200 attorney review */
 export async function sendLetterReadyEmail(opts: {
   to: string;
   name: string;
   subject: string;
   letterId: number;
   appUrl: string;
+  letterType?: string;
+  jurisdictionState?: string;
 }) {
   const ctaUrl = `${opts.appUrl}/letters/${opts.letterId}`;
+  const letterTypeLabel = opts.letterType
+    ? opts.letterType.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Legal Letter";
+  const jurisdictionLine = opts.jurisdictionState
+    ? `<p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Jurisdiction:</strong> ${opts.jurisdictionState}</p>`
+    : "";
+
   const body = `
     <p>Hello ${opts.name},</p>
-    <p>Your AI-drafted legal letter is ready! Our system has completed the research and drafting stages for your request.</p>
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;margin:20px 0;">
+    <p>Your letter draft is ready. Our legal team has completed the research and drafting stages — your letter is professionally structured and ready for attorney review.</p>
+
+    <!-- Letter summary card -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;margin:20px 0;">
       <tr><td style="padding:20px;">
-        <p style="margin:0 0 8px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#166534;"><strong>✅ Your Draft Is Ready</strong></p>
+        <p style="margin:0 0 10px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#92400E;font-weight:700;">📄 Draft Ready — Attorney Review Required</p>
         <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Letter:</strong> ${opts.subject}</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Type:</strong> ${letterTypeLabel}</p>
+        ${jurisdictionLine}
         <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Letter ID:</strong> #${opts.letterId}</p>
       </td></tr>
     </table>
-    <p>To send your letter for licensed attorney review and final approval, click the button below to view your draft and complete the unlock payment.</p>
-    <p style="font-size:13px;color:#6B7280;">Attorney review ensures your letter is legally sound and professionally formatted before it's sent.</p>
+
+    <!-- What's included -->
+    <p style="margin:0 0 12px;font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:700;color:#0F2744;">What's included with attorney review ($200):</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">⚖️</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;padding-bottom:8px;">
+          <strong>Licensed attorney review</strong> — a qualified attorney reads every word of your draft
+        </td>
+      </tr>
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">✏️</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;padding-bottom:8px;">
+          <strong>Professional edits included</strong> — the attorney corrects, strengthens, and finalises your letter
+        </td>
+      </tr>
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">📑</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;padding-bottom:8px;">
+          <strong>PDF delivered to your account</strong> — download and send your professionally formatted letter
+        </td>
+      </tr>
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">🔒</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;">
+          <strong>Legally sound and jurisdiction-specific</strong> — researched and drafted for your exact situation
+        </td>
+      </tr>
+    </table>
+
+    <!-- Urgency note -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;margin:0 0 8px;">
+      <tr><td style="padding:14px 18px;">
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:13px;color:#1D4ED8;">
+          Your draft is ready and waiting. Click the button below to view a preview and complete your payment to submit for attorney review.
+        </p>
+      </td></tr>
+    </table>
   `;
+
   const html = buildEmailHtml({
-    preheader: `Your AI-drafted letter is ready — unlock it for attorney review.`,
-    title: "Your Letter Draft Is Ready 🎉",
+    preheader: `Your letter draft is ready — submit for attorney review for $200.`,
+    title: "Your Letter Draft Is Ready",
     body,
-    ctaText: "View & Unlock Your Letter — $29",
+    ctaText: "View Draft & Submit for Review — $200",
     ctaUrl,
-    accentColor: "#059669", // green — ready / positive action
+    accentColor: "#D97706", // amber — action required / payment prompt
   });
+
   await sendEmail({
     to: opts.to,
-    subject: `[${APP_NAME}] Your letter draft is ready — unlock for attorney review`,
+    subject: `[${APP_NAME}] Your letter draft is ready — submit for attorney review`,
     html,
     text: buildPlainText({
       title: "Your Letter Draft Is Ready",
-      body: `Hello ${opts.name}, your AI-drafted letter "${opts.subject}" (Letter #${opts.letterId}) is ready. Unlock it for attorney review at: ${ctaUrl}`,
-      ctaText: "View & Unlock Your Letter",
+      body: `Hello ${opts.name},\n\nYour letter draft "${opts.subject}" (Letter #${opts.letterId}) is ready for attorney review.\n\nWhat's included with attorney review ($200):\n- Licensed attorney review\n- Professional edits included\n- PDF delivered to your account\n- Legally sound and jurisdiction-specific\n\nClick below to view a preview of your draft and submit for attorney review.`,
+      ctaText: "View Draft & Submit for Review — $200",
       ctaUrl,
     }),
   });
@@ -642,6 +703,353 @@ export async function sendWelcomeEmail(opts: {
       title: "Welcome to Talk to My Lawyer!",
       body: `Hello ${opts.name}, your email has been verified and your account is now active. Start creating legal letters at:`,
       ctaText: "Go to Dashboard",
+      ctaUrl: opts.dashboardUrl,
+    }),
+  });
+}
+
+/**
+ * 48-hour reminder: subscriber has a draft waiting but hasn't paid for attorney review.
+ * Sent once per letter (idempotency enforced by draft_reminder_sent_at column).
+ */
+export async function sendDraftReminderEmail(opts: {
+  to: string;
+  name: string;
+  subject: string;
+  letterId: number;
+  appUrl: string;
+  letterType?: string;
+  jurisdictionState?: string;
+  hoursWaiting?: number;
+}) {
+  const ctaUrl = `${opts.appUrl}/letters/${opts.letterId}`;
+  const letterTypeLabel = opts.letterType
+    ? opts.letterType.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Legal Letter";
+  const jurisdictionLine = opts.jurisdictionState
+    ? `<p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Jurisdiction:</strong> ${opts.jurisdictionState}</p>`
+    : "";
+  const hoursLabel = opts.hoursWaiting ? `${Math.round(opts.hoursWaiting)} hours` : "48 hours";
+
+  const body = `
+    <p>Hello ${opts.name},</p>
+    <p>Your legal letter draft has been ready for <strong>${hoursLabel}</strong> and is still waiting for attorney review. Don't let your work go to waste — submit it today for just <strong>$200</strong>.</p>
+
+    <!-- Letter summary card — red-tinted for urgency -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;margin:20px 0;">
+      <tr><td style="padding:20px;">
+        <p style="margin:0 0 10px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#9A3412;font-weight:700;">⏰ Your Draft Is Still Waiting</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Letter:</strong> ${opts.subject}</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Type:</strong> ${letterTypeLabel}</p>
+        ${jurisdictionLine}
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Letter ID:</strong> #${opts.letterId}</p>
+      </td></tr>
+    </table>
+
+    <!-- Why act now -->
+    <p style="margin:0 0 12px;font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:700;color:#0F2744;">Why submit for attorney review now?</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">⚖️</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;padding-bottom:8px;">
+          <strong>Legal matters are time-sensitive</strong> — deadlines and statutes of limitations can affect your case
+        </td>
+      </tr>
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">✏️</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;padding-bottom:8px;">
+          <strong>A licensed attorney reviews every word</strong> — ensuring your letter is accurate and professionally formatted
+        </td>
+      </tr>
+      <tr>
+        <td width="28" valign="top" style="padding:4px 8px 8px 0;font-size:16px;">📑</td>
+        <td style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;">
+          <strong>PDF ready to send</strong> — once approved, download and use your letter immediately
+        </td>
+      </tr>
+    </table>
+
+    <!-- Pricing callout -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;margin:0 0 8px;">
+      <tr><td style="padding:14px 18px;">
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:14px;color:#1D4ED8;">
+          <strong>Attorney review — $200 one-time payment.</strong> No subscription required. Your draft is ready and waiting.
+        </p>
+      </td></tr>
+    </table>
+  `;
+
+  const html = buildEmailHtml({
+    preheader: `Your letter draft has been waiting ${hoursLabel} — submit for attorney review today.`,
+    title: "Your Draft Is Still Waiting for Review",
+    body,
+    ctaText: "Submit for Attorney Review — $200",
+    ctaUrl,
+    accentColor: "#EA580C", // orange — urgency reminder
+  });
+
+  await sendEmail({
+    to: opts.to,
+    subject: `[${APP_NAME}] Reminder: your letter draft is ready — submit for attorney review`,
+    html,
+    text: buildPlainText({
+      title: "Your Draft Is Still Waiting for Review",
+      body: `Hello ${opts.name},\n\nYour letter draft "${opts.subject}" (Letter #${opts.letterId}) has been ready for ${hoursLabel} and is still waiting for attorney review.\n\nLegal matters are time-sensitive. Submit for attorney review today for $200 — a licensed attorney will review, edit, and approve your letter.\n\nView your draft at: ${ctaUrl}`,
+      ctaText: "Submit for Attorney Review — $200",
+      ctaUrl,
+    }),
+  });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EMPLOYEE & ATTORNEY EMAIL TEMPLATES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Welcome email for new employees — includes discount code info and affiliate dashboard link.
+ */
+export async function sendEmployeeWelcomeEmail(opts: {
+  to: string;
+  name: string;
+  discountCode?: string;
+  dashboardUrl: string;
+}) {
+  const codeBlock = opts.discountCode
+    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#EFF6FF;border-radius:8px;margin:16px 0;border:1px solid #BFDBFE;">
+        <tr><td style="padding:16px;">
+          <p style="margin:0 0 8px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#1E40AF;font-weight:700;">Your Affiliate Discount Code</p>
+          <p style="margin:0;font-family:'Courier New',monospace;font-size:20px;color:#1D4ED8;font-weight:700;letter-spacing:2px;">${opts.discountCode}</p>
+          <p style="margin:8px 0 0;font-family:Inter,Arial,sans-serif;font-size:12px;color:#6B7280;">Share this code with clients to earn a 5% commission on every subscription payment.</p>
+        </td></tr>
+      </table>`
+    : "";
+  const body = `
+    <p>Hello ${opts.name},</p>
+    <p>Welcome to the <strong>${APP_NAME}</strong> team! Your employee account has been verified and is now active.</p>
+    ${codeBlock}
+    <p>As an employee, you can:</p>
+    <ul style="margin:8px 0;padding-left:20px;font-family:Inter,Arial,sans-serif;font-size:15px;color:#374151;line-height:1.8;">
+      <li>Share your personal discount code with potential clients</li>
+      <li>Track referrals and see who signed up using your code</li>
+      <li>Monitor your commission earnings in real time</li>
+      <li>Access the employee dashboard for operational support</li>
+    </ul>
+    <p>Get started by visiting your employee dashboard below.</p>
+  `;
+  const html = buildEmailHtml({
+    preheader: "Your employee account is active.",
+    title: "Welcome to the Team!",
+    body,
+    ctaText: "Go to Employee Dashboard",
+    ctaUrl: opts.dashboardUrl,
+    accentColor: "#2563EB",
+  });
+  await sendEmail({
+    to: opts.to,
+    subject: `[${APP_NAME}] Welcome to the team!`,
+    html,
+    text: buildPlainText({
+      title: "Welcome to the Team!",
+      body: `Hello ${opts.name}, your employee account is now active.${opts.discountCode ? ` Your affiliate discount code is: ${opts.discountCode}.` : ""} Visit your dashboard to get started.`,
+      ctaText: "Go to Employee Dashboard",
+      ctaUrl: opts.dashboardUrl,
+    }),
+  });
+}
+
+/**
+ * Welcome email for new attorneys — includes review center info and attorney dashboard link.
+ */
+export async function sendAttorneyWelcomeEmail(opts: {
+  to: string;
+  name: string;
+  dashboardUrl: string;
+}) {
+  const body = `
+    <p>Hello ${opts.name},</p>
+    <p>Welcome to <strong>${APP_NAME}</strong>. Your attorney account has been verified and you now have access to the <strong>Letter Review Center</strong>.</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F5F3FF;border-radius:8px;margin:16px 0;border:1px solid #DDD6FE;">
+      <tr><td style="padding:16px;">
+        <p style="margin:0 0 8px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#5B21B6;font-weight:700;">Letter Review Center</p>
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:13px;color:#6B7280;">
+          The Review Center is where you will claim, edit, and approve or reject AI-generated legal letter drafts. Each letter includes jurisdiction research, a structured draft, and the subscriber intake details.
+        </p>
+      </td></tr>
+    </table>
+    <p>As a reviewing attorney, you can:</p>
+    <ul style="margin:8px 0;padding-left:20px;font-family:Inter,Arial,sans-serif;font-size:15px;color:#374151;line-height:1.8;">
+      <li>Claim letters from the review queue</li>
+      <li>Edit AI-generated drafts using the in-app editor</li>
+      <li>Approve, reject, or request changes with detailed notes</li>
+      <li>View full audit trails and letter history</li>
+    </ul>
+    <p>You will receive email notifications when new letters are ready for review.</p>
+  `;
+  const html = buildEmailHtml({
+    preheader: "Your attorney account is active.",
+    title: "Welcome, Counselor!",
+    body,
+    ctaText: "Go to Attorney Dashboard",
+    ctaUrl: opts.dashboardUrl,
+    accentColor: "#7C3AED",
+  });
+  await sendEmail({
+    to: opts.to,
+    subject: `[${APP_NAME}] Welcome — your attorney account is ready!`,
+    html,
+    text: buildPlainText({
+      title: "Welcome to Talk to My Lawyer!",
+      body: `Hello ${opts.name}, your attorney account is now active. You have access to the Letter Review Center where you can claim, edit, and approve legal letter drafts.`,
+      ctaText: "Go to Attorney Dashboard",
+      ctaUrl: opts.dashboardUrl,
+    }),
+  });
+}
+
+/**
+ * Notify an attorney when a letter has been assigned/claimed to them for review.
+ */
+export async function sendReviewAssignedEmail(opts: {
+  to: string;
+  name: string;
+  letterSubject: string;
+  letterId: number;
+  letterType: string;
+  jurisdiction: string;
+  subscriberName: string;
+  appUrl: string;
+}) {
+  const ctaUrl = `${opts.appUrl}/review/${opts.letterId}`;
+  const body = `
+    <p>Hello ${opts.name},</p>
+    <p>A letter has been assigned to you for review. Please review it at your earliest convenience.</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F5F3FF;border-radius:8px;margin:16px 0;border:1px solid #DDD6FE;">
+      <tr><td style="padding:16px;">
+        <p style="margin:0 0 8px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#5B21B6;font-weight:700;">Letter Details</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Subject:</strong> ${opts.letterSubject}</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Type:</strong> ${opts.letterType}</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Jurisdiction:</strong> ${opts.jurisdiction}</p>
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Client:</strong> ${opts.subscriberName}</p>
+      </td></tr>
+    </table>
+    <p style="font-size:13px;color:#6B7280;">Review typically involves reading the AI draft, making edits as needed, and approving or rejecting the letter.</p>
+  `;
+  const html = buildEmailHtml({
+    preheader: `Letter #${opts.letterId} has been assigned to you for review.`,
+    title: "Letter Assigned for Review",
+    body,
+    ctaText: "Open Letter Review",
+    ctaUrl,
+    accentColor: "#7C3AED",
+  });
+  await sendEmail({
+    to: opts.to,
+    subject: `[${APP_NAME}] Letter assigned to you: ${opts.letterSubject} (#${opts.letterId})`,
+    html,
+    text: buildPlainText({
+      title: "Letter Assigned for Review",
+      body: `Hello ${opts.name}, letter #${opts.letterId} "${opts.letterSubject}" (${opts.letterType}, ${opts.jurisdiction}) from ${opts.subscriberName} has been assigned to you.`,
+      ctaText: "Open Letter Review",
+      ctaUrl,
+    }),
+  });
+}
+
+/**
+ * Confirm to the attorney that their review action (approve/reject/needs_changes) was recorded.
+ */
+export async function sendReviewCompletedEmail(opts: {
+  to: string;
+  name: string;
+  letterSubject: string;
+  letterId: number;
+  action: "approved" | "rejected" | "needs_changes";
+  appUrl: string;
+}) {
+  const ctaUrl = `${opts.appUrl}/review/${opts.letterId}`;
+  const actionLabels: Record<string, { label: string; color: string }> = {
+    approved: { label: "Approved", color: "#059669" },
+    rejected: { label: "Rejected", color: "#DC2626" },
+    needs_changes: { label: "Changes Requested", color: "#D97706" },
+  };
+  const { label, color } = actionLabels[opts.action] || actionLabels.approved;
+  const body = `
+    <p>Hello ${opts.name},</p>
+    <p>Your review action has been recorded for the following letter:</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#F9FAFB;border-radius:8px;margin:16px 0;border:1px solid #E5E7EB;">
+      <tr><td style="padding:16px;">
+        <p style="margin:0 0 8px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Letter:</strong> ${opts.letterSubject} (#${opts.letterId})</p>
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:14px;color:${color};font-weight:700;">Status: ${label}</p>
+      </td></tr>
+    </table>
+    <p style="font-size:13px;color:#6B7280;">The subscriber has been notified of your decision. You can view the full audit trail in the Review Center.</p>
+  `;
+  const html = buildEmailHtml({
+    preheader: `Letter #${opts.letterId} review ${label.toLowerCase()}.`,
+    title: `Review ${label}`,
+    body,
+    ctaText: "View Letter Details",
+    ctaUrl,
+    accentColor: color,
+  });
+  await sendEmail({
+    to: opts.to,
+    subject: `[${APP_NAME}] Review recorded: ${opts.letterSubject} — ${label}`,
+    html,
+    text: buildPlainText({
+      title: `Review ${label}`,
+      body: `Hello ${opts.name}, your review action (${label}) has been recorded for letter "${opts.letterSubject}" (#${opts.letterId}). The subscriber has been notified.`,
+      ctaText: "View Letter",
+      ctaUrl,
+    }),
+  });
+}
+
+/**
+ * Notify an employee when one of their referrals converts (subscription payment with their discount code).
+ */
+export async function sendEmployeeCommissionEmail(opts: {
+  to: string;
+  name: string;
+  subscriberName: string;
+  planName: string;
+  commissionAmount: string;
+  discountCode: string;
+  dashboardUrl: string;
+}) {
+  const body = `
+    <p>Hello ${opts.name},</p>
+    <p>Great news — a client you referred just made a payment using your discount code!</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#ECFDF5;border-radius:8px;margin:16px 0;border:1px solid #A7F3D0;">
+      <tr><td style="padding:16px;">
+        <p style="margin:0 0 8px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#047857;font-weight:700;">Commission Earned</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Client:</strong> ${opts.subscriberName}</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Plan:</strong> ${opts.planName}</p>
+        <p style="margin:0 0 6px;font-family:Inter,Arial,sans-serif;font-size:14px;color:#374151;"><strong>Discount Code Used:</strong> ${opts.discountCode}</p>
+        <p style="margin:0;font-family:Inter,Arial,sans-serif;font-size:20px;color:#059669;font-weight:700;">+${opts.commissionAmount}</p>
+      </td></tr>
+    </table>
+    <p>Your commission has been recorded and is visible in your earnings dashboard. Keep sharing your code to earn more!</p>
+  `;
+  const html = buildEmailHtml({
+    preheader: `You earned ${opts.commissionAmount} in commission!`,
+    title: "Commission Earned!",
+    body,
+    ctaText: "View My Earnings",
+    ctaUrl: opts.dashboardUrl,
+    accentColor: "#059669",
+  });
+  await sendEmail({
+    to: opts.to,
+    subject: `[${APP_NAME}] Commission earned: ${opts.commissionAmount} from ${opts.subscriberName}`,
+    html,
+    text: buildPlainText({
+      title: "Commission Earned!",
+      body: `Hello ${opts.name}, a client (${opts.subscriberName}) just paid for the ${opts.planName} plan using your discount code (${opts.discountCode}). You earned ${opts.commissionAmount} in commission.`,
+      ctaText: "View My Earnings",
       ctaUrl: opts.dashboardUrl,
     }),
   });

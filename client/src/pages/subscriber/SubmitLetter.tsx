@@ -270,7 +270,7 @@ export default function SubmitLetter() {
       }
       // Clear saved draft on successful submission
       localStorage.removeItem(DRAFT_KEY);
-      toast.success("Letter submitted", { description: "The AI pipeline is generating your draft. This usually takes 1\u20132 minutes." });
+      toast.success("Letter submitted", { description: "Our legal team is preparing your draft. This usually takes 1\u20132 minutes." });
       setPipelineLetterId(letterId);
       setShowPipeline(true);
     } catch (err: any) {
@@ -310,7 +310,7 @@ export default function SubmitLetter() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Resume Draft Banner */}
         {showDraftBanner && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between gap-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-blue-600 shrink-0" />
               <div>
@@ -326,9 +326,9 @@ export default function SubmitLetter() {
         )}
 
         {/* Step Progress */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
           {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center flex-1">
+            <div key={s.id} className="flex items-center flex-1 min-w-0">
               <div
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0 ${
                   step === s.id

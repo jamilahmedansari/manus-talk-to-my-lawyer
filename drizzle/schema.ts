@@ -10,10 +10,12 @@ import {
   boolean,
   serial,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ─── User Roles ───
-export const USER_ROLES = ["subscriber", "employee", "admin"] as const;
+// NOTE: Must match userRoleEnum below exactly.
+export const USER_ROLES = ["subscriber", "employee", "attorney", "admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 // ─── Letter Statuses (State Machine) ───
@@ -48,7 +50,8 @@ export const VERSION_TYPES = ["ai_draft", "attorney_edit", "final_approved"] as 
 export type VersionType = (typeof VERSION_TYPES)[number];
 
 // ─── Actor Types ───
-export const ACTOR_TYPES = ["system", "subscriber", "employee", "admin"] as const;
+// NOTE: Must match actorTypeEnum below exactly.
+export const ACTOR_TYPES = ["system", "subscriber", "employee", "attorney", "admin"] as const;
 export type ActorType = (typeof ACTOR_TYPES)[number];
 
 // ─── Job Statuses ───
@@ -84,7 +87,7 @@ export const jobTypeEnum = pgEnum("job_type", ["research", "draft_generation", "
 export const researchStatusEnum = pgEnum("research_status", ["queued", "running", "completed", "failed", "invalid"]);
 export const priorityEnum = pgEnum("priority_level", ["low", "normal", "high", "urgent"]);
 export const noteVisibilityEnum = pgEnum("note_visibility", ["internal", "user_visible"]);
-export const subscriptionPlanEnum = pgEnum("subscription_plan", ["per_letter", "monthly", "annual"]);
+export const subscriptionPlanEnum = pgEnum("subscription_plan", ["per_letter", "monthly", "annual", "free_trial_review", "starter", "professional"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "canceled", "past_due", "trialing", "incomplete", "none"]);
 export const commissionStatusEnum = pgEnum("commission_status", ["pending", "paid", "voided"]);
 export const payoutStatusEnum = pgEnum("payout_status", ["pending", "processing", "completed", "rejected"]);
@@ -130,6 +133,8 @@ export const letterRequests = pgTable("letter_requests", {
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   priority: priorityEnum("priority").default("normal").notNull(),
   lastStatusChangedAt: timestamp("last_status_changed_at", { withTimezone: true }).defaultNow(),
+  // Tracks when the 48-hour draft-ready reminder email was sent (null = not yet sent)
+  draftReminderSentAt: timestamp("draft_reminder_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
@@ -267,7 +272,7 @@ export type InsertNotification = typeof notifications.$inferInsert;
 // ═══════════════════════════════════════════════════════
 // TABLE: subscriptions (Stripe subscription tracking)
 // ═══════════════════════════════════════════════════════
-export const SUBSCRIPTION_PLANS = ["per_letter", "monthly", "annual"] as const;
+export const SUBSCRIPTION_PLANS = ["per_letter", "monthly", "annual", "free_trial_review", "starter", "professional"] as const;
 export type SubscriptionPlan = (typeof SUBSCRIPTION_PLANS)[number];
 
 export const SUBSCRIPTION_STATUSES = ["active", "canceled", "past_due", "trialing", "incomplete", "none"] as const;
@@ -336,6 +341,7 @@ export const commissionLedger = pgTable("commission_ledger", {
   employeeIdx: index("idx_commission_ledger_employee_id").on(t.employeeId),
   statusIdx: index("idx_commission_ledger_status").on(t.status),
   employeeStatusIdx: index("idx_commission_ledger_employee_status").on(t.employeeId, t.status),
+  uniquePaymentIntentIdx: uniqueIndex("uq_commission_ledger_stripe_pi").on(t.stripePaymentIntentId),
 }));
 
 export type CommissionLedgerEntry = typeof commissionLedger.$inferSelect;

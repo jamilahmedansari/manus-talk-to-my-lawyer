@@ -12,7 +12,27 @@ import * as crypto from "crypto";
 import * as db from "./db";
 import type { User } from "../drizzle/schema";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { sendVerificationEmail, sendWelcomeEmail } from "./email";
+import { sendVerificationEmail, sendWelcomeEmail, sendEmployeeWelcomeEmail, sendAttorneyWelcomeEmail } from "./email";
+
+// ─── Canonical Origin URL ──────────────────────────────────────────────────
+const CANONICAL_DOMAIN = "https://www.talk-to-my-lawyer.com";
+
+/**
+ * Get the origin URL from the request, with a safe production fallback.
+ * Priority: origin header → x-forwarded-host → host header → canonical domain.
+ * NEVER falls back to localhost.
+ */
+export function getOriginUrl(req: Request): string {
+  if (req.headers.origin && !req.headers.origin.includes("localhost")) {
+    return req.headers.origin;
+  }
+  const host = req.headers["x-forwarded-host"] ?? req.headers.host;
+  if (host && !String(host).includes("localhost")) {
+    const proto = req.headers["x-forwarded-proto"] ?? "https";
+    return `${proto}://${host}`;
+  }
+  return CANONICAL_DOMAIN;
+}
 
 // ─── Supabase Clients ──────────────────────────────────────────────────────
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
@@ -142,8 +162,11 @@ export function registerSupabaseAuthRoutes(app: Express) {
   // POST /api/auth/signup — Create a new user via Supabase Auth
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
-      const { email, password, name } = req.body;
-      
+      const { email, password, name, role: requestedRole } = req.body;
+      // Only allow subscriber/attorney/employee on self-signup (admin is never self-assignable)
+      const ALLOWED_SIGNUP_ROLES = ["subscriber", "attorney", "employee"];
+      const signupRole = ALLOWED_SIGNUP_ROLES.includes(requestedRole) ? requestedRole : "subscriber";
+
       if (!email || !password) {
         res.status(400).json({ error: "Email and password are required" });
         return;
@@ -154,14 +177,18 @@ export function registerSupabaseAuthRoutes(app: Express) {
         return;
       }
 
-      const admin = getAdminClient();
-      
-      // Create user in Supabase Auth
-      const { data, error } = await admin.auth.admin.createUser({
+      // Use anon client signUp so Supabase sends the confirmation email via our Resend SMTP relay
+      const anonSignupClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const origin = getOriginUrl(req);
+      const { data, error } = await anonSignupClient.auth.signUp({
         email,
         password,
-        email_confirm: true, // Auto-confirm for now (no email verification)
-        user_metadata: { name: name || email.split("@")[0] },
+        options: {
+          emailRedirectTo: `${origin}/verify-email`,
+          data: { name: name || email.split("@")[0] },
+        },
       });
 
       if (error) {
@@ -190,25 +217,27 @@ export function registerSupabaseAuthRoutes(app: Express) {
         email,
         loginMethod: "email",
         lastSignedIn: new Date(),
-        ...(isOwner ? { role: "admin", emailVerified: true } : {}),
+        ...(isOwner ? { role: "admin", emailVerified: true } : { role: signupRole as "subscriber" | "attorney" | "employee" }),
       });
 
       // Get the app user record to get the integer id
       const appUser = await db.getUserByOpenId(data.user.id);
 
-      // Send verification email (unless owner who is auto-verified)
+      // Supabase now sends the confirmation email via our Resend SMTP relay (smtp.resend.com).
+      // The emailRedirectTo in signUp() above points to /verify-email on the correct domain.
+      // No need to send a separate custom verification email here.
       if (appUser && !isOwner) {
-        const verificationToken = crypto.randomBytes(48).toString("hex");
-        await db.deleteUserVerificationTokens(appUser.id); // clear any old tokens
-        await db.createEmailVerificationToken(appUser.id, email, verificationToken);
-        const origin = req.headers.origin || `https://${req.headers.host}` || "http://localhost:3000";
-        const verifyUrl = `${origin}/verify-email?token=${verificationToken}`;
+        console.log(`[SupabaseAuth] Confirmation email dispatched by Supabase/Resend to ${email}`);
+      }
+
+      // Auto-generate discount code for employees
+      if (appUser && signupRole === "employee") {
         try {
-          await sendVerificationEmail({ to: email, name: userName, verifyUrl });
-          console.log(`[SupabaseAuth] Verification email sent to ${email}`);
-        } catch (emailErr) {
-          console.error("[SupabaseAuth] Failed to send verification email:", emailErr);
-          // Don't block signup if email fails
+          await db.createDiscountCodeForEmployee(appUser.id, userName);
+          console.log(`[SupabaseAuth] Discount code auto-generated for new employee #${appUser.id}`);
+        } catch (codeErr) {
+          console.error("[SupabaseAuth] Failed to create discount code for employee:", codeErr);
+          // Non-fatal — employee can still sign up
         }
       }
 
@@ -257,7 +286,23 @@ export function registerSupabaseAuthRoutes(app: Express) {
           res.status(401).json({ error: "Invalid email or password" });
           return;
         }
+        // Supabase returns "Email not confirmed" when email_confirm is required
+        if (error.message.includes("Email not confirmed") || error.message.includes("email_not_confirmed")) {
+          res.status(401).json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
+          return;
+        }
         res.status(401).json({ error: error.message });
+        return;
+      }
+      // Check our app-level emailVerified flag as well (belt-and-suspenders)
+      const appUserCheck = await db.getUserByEmail(email).catch(() => null);
+      if (appUserCheck && appUserCheck.emailVerified === false) {
+        // Sign them out of Supabase since we're blocking at app level
+        try {
+          const admin = getAdminClient();
+          await admin.auth.admin.signOut(data.user.id);
+        } catch {}
+        res.status(401).json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
         return;
       }
 
@@ -279,6 +324,10 @@ export function registerSupabaseAuthRoutes(app: Express) {
         lastSignedIn: new Date(),
       });
 
+      // Fetch the app user to get their role
+      const appUser = await db.getUserByOpenId(data.user.id);
+      const userRole = appUser?.role || "subscriber";
+
       // Set session cookie
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(SUPABASE_SESSION_COOKIE, JSON.stringify({
@@ -295,6 +344,7 @@ export function registerSupabaseAuthRoutes(app: Express) {
           id: data.user.id,
           email: data.user.email,
           name,
+          role: userRole,
         },
         session: {
           access_token: data.session.access_token,
@@ -412,7 +462,7 @@ export function registerSupabaseAuthRoutes(app: Express) {
       });
 
       const { error } = await anonClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${req.headers.origin || "http://localhost:3000"}/reset-password`,
+        redirectTo: `${getOriginUrl(req)}/reset-password`,
       });
 
       if (error) {
@@ -476,23 +526,54 @@ export function registerSupabaseAuthRoutes(app: Express) {
         res.status(400).json({ error: "Verification token is required" });
         return;
       }
-      const consumed = await db.consumeVerificationToken(token);
-      if (!consumed) {
+      // consumeVerificationToken now returns the record on success, or null
+      const record = await db.consumeVerificationToken(token);
+      if (!record) {
         res.status(400).json({ error: "Invalid or expired verification token. Please request a new one." });
         return;
       }
-      // Send welcome email
-      const tokenRecord = await db.findValidVerificationToken(token).catch(() => null);
-      // tokenRecord is now null (already consumed) — get user from db
-      // We'll just return success and let the frontend handle welcome
+      // Send role-specific welcome email (fire-and-forget — don't block the response)
+      const origin = getOriginUrl(req);
+      db.getUserById(record.userId).then(async (user) => {
+        if (user && user.email) {
+          const userName = user.name || user.email.split("@")[0];
+          try {
+            if (user.role === "employee") {
+              // Get the employee's discount code if available
+              const discountCode = await db.getDiscountCodeByEmployeeId(user.id).catch(() => null);
+              const code = discountCode?.code;
+              await sendEmployeeWelcomeEmail({
+                to: user.email,
+                name: userName,
+                discountCode: code,
+                dashboardUrl: `${origin}/employee`,
+              });
+            } else if (user.role === "attorney") {
+              await sendAttorneyWelcomeEmail({
+                to: user.email,
+                name: userName,
+                dashboardUrl: `${origin}/attorney`,
+              });
+            } else {
+              // Default subscriber welcome
+              await sendWelcomeEmail({
+                to: user.email,
+                name: userName,
+                dashboardUrl: `${origin}/dashboard`,
+              });
+            }
+          } catch (emailErr) {
+            console.error("[SupabaseAuth] Failed to send welcome email:", emailErr);
+          }
+        }
+      }).catch(() => {});
       res.json({ success: true, message: "Email verified successfully! You can now sign in." });
     } catch (err) {
       console.error("[SupabaseAuth] Email verification error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
   });
-
-  // POST /api/auth/resend-verification — Resend verification email
+    // POST /api/auth/resend-verification — Resend verification email
   app.post("/api/auth/resend-verification", async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
@@ -513,7 +594,7 @@ export function registerSupabaseAuthRoutes(app: Express) {
       const verificationToken = crypto.randomBytes(48).toString("hex");
       await db.deleteUserVerificationTokens(user.id);
       await db.createEmailVerificationToken(user.id, email, verificationToken);
-      const origin = req.headers.origin || `https://${req.headers.host}` || "http://localhost:3000";
+      const origin = getOriginUrl(req);
       const verifyUrl = `${origin}/verify-email?token=${verificationToken}`;
       try {
         await sendVerificationEmail({ to: email, name: user.name || email.split("@")[0], verifyUrl });

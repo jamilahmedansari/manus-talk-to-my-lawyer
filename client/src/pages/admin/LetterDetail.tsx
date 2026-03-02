@@ -57,6 +57,13 @@ export default function AdminLetterDetail() {
     },
     onError: (err) => toast.error("Retry failed", { description: err.message }),
   });
+  const triggerPipelineMutation = trpc.admin.triggerPipeline.useMutation({
+    onSuccess: () => {
+      toast.success("Full pipeline triggered", { description: "The letter is now being processed from scratch through the AI pipeline." });
+      refetch();
+    },
+    onError: (err) => toast.error("Trigger failed", { description: err.message }),
+  });
 
   if (!letter) {
     return (
@@ -123,7 +130,19 @@ export default function AdminLetterDetail() {
               <AlertTriangle className="h-4 w-4 mr-2" />
               Force Status Transition
             </Button>
-            {(letter.status === "submitted" || letter.status === "researching" || letter.status === "drafting") && (
+            {(letter.status === "submitted") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-green-500 text-green-700"
+                onClick={() => triggerPipelineMutation.mutate({ letterId })}
+                disabled={triggerPipelineMutation.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${triggerPipelineMutation.isPending ? "animate-spin" : ""}`} />
+                Trigger Full Pipeline
+              </Button>
+            )}
+            {(letter.status === "researching" || letter.status === "drafting") && (
               <Button
                 variant="outline"
                 size="sm"

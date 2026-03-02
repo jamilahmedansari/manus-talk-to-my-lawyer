@@ -43,7 +43,7 @@ export default function EmployeeDashboard() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "Pending Review", value: stats.pending, icon: <Clock className="w-5 h-5" />, color: "text-amber-600", bg: "bg-amber-50", urgent: stats.pending > 5 },
             { label: "My Active", value: stats.myActive, icon: <FileText className="w-5 h-5" />, color: "text-blue-600", bg: "bg-blue-50", urgent: false },

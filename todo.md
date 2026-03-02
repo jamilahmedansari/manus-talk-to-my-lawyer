@@ -719,3 +719,410 @@
   - Phase 38: Updated 8 tests to use attorneyProcedure instead of employeeProcedure as boundary markers
   - Phase 38: Fixed LetterDetail "Download PDF" label to match test expectation
 - [x] All 320/320 tests passing, 0 TypeScript errors
+
+## Phase 54: Fix Letter Submission Database Insert Failure
+- [x] Diagnose and fix letter_requests insert failure (SQL error on submission) — missing `archived_at` column in Supabase DB, applied ALTER TABLE migration
+
+## Phase 55: SEO Fix — Homepage Title
+- [ ] Set document.title on homepage (/) to 30-60 characters
+
+## Phase 55: Remove AI References — Attorney-First Rebrand
+- [ ] Audit all frontend files for "AI", "artificial intelligence", "OpenAI", "machine learning" references
+- [ ] Rewrite Home.tsx hero, features, how-it-works, and pricing sections
+- [ ] Update subscriber Dashboard, LetterDetail, SubmitLetter pages
+- [ ] Update shared components, nav, status labels, and email-visible strings
+- [ ] Ensure no AI mention remains in any user-visible page or component
+
+## Phase 56: Role Selector on Signup Page
+- [x] Add role selector (Client / Attorney / Employee) to Signup page
+- [x] Wire selected role to user creation so DB record gets correct role
+- [x] Ensure login redirects correctly for all roles
+
+## Phase 57: Attorney & Employee Login/Access Fix
+- [x] Audit attorney and employee routing in App.tsx
+- [x] Fix login redirect for attorney and employee roles (attorney now goes to /attorney)
+- [x] Ensure ProtectedRoute allows attorney role where needed
+- [x] Verify employee and attorney dashboards are accessible
+- [x] Add attorney to DB user_role enum (was missing, causing signup failures)
+- [x] Fix signup redirect (attorney → /attorney, employee → /employee)
+
+## Phase 58: ?next= Deep Link Redirect
+- [x] ProtectedRoute appends ?next=<path> when redirecting unauthenticated users to /login
+- [x] Login.tsx reads ?next= and redirects there after login (with role validation)
+- [x] Signup.tsx also reads ?next= and redirects there after signup
+
+## Phase 59: Subscriber Profile Page
+- [x] Add tRPC procedures for profile data, subscription status, and payment history
+- [x] Build /profile page with account info, subscription card, and payment history table
+- [x] Add profile link to subscriber dashboard nav
+
+## Phase 60: Universal Profile Settings Page
+- [x] Add password change tRPC mutation (via Supabase auth — verifies current password, updates via admin API)
+- [x] Update Profile page to work for all roles (subscriber, employee, attorney, admin)
+- [x] Add username edit and password change sections
+- [x] Update /profile route to allow subscriber, employee, attorney, and admin
+- [x] Add Settings link to sidebar nav for all 4 roles in AppLayout
+
+## Phase 61: Email Change with Re-Verification
+- [x] Add changeEmail tRPC mutation (verify current password, update email in Supabase + app DB, set emailVerified=false)
+- [x] Handle Supabase email confirmation flow (sends verification to new email via token)
+- [x] Update Profile page UI with email change section (current email display, edit mode, password confirmation)
+- [x] Show re-verification banner when emailVerified is false after email change
+- [x] Duplicate email check before allowing change
+
+## Phase 62: Homepage SEO Title Fix
+- [x] Set document.title on homepage to 'Talk to My Lawyer — Professional Legal Letters' (46 chars)
+- [x] Remove all AI references from index.html meta tags (title, description, og, twitter)
+- [x] Update meta descriptions to reflect freemium model ('your first letter is free')
+- [x] Remove 'AI legal' from keywords, add 'free legal letter'
+
+## Phase 63: Upstash Redis Rate Limiting
+- [x] Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN as secrets
+- [x] Install @upstash/ratelimit and @upstash/redis packages
+- [x] Create server/rateLimiter.ts with per-endpoint limits
+- [x] Apply rate limiting to auth endpoints (10 req/15 min per IP)
+- [x] Apply rate limiting to letters.submit (5 req/hour per user)
+- [x] Apply rate limiting to billing endpoints (10 req/hour per user)
+- [x] Apply global tRPC fallback (60 req/min per IP)
+- [x] Write 9 Vitest tests (credentials, PONG, allow/block, graceful degradation)
+- [x] All 330/330 tests passing, 0 TypeScript errors
+
+## Phase 64: Email Verification & Password Reset Fixes
+- [x] Fix verify-email route: look up user before consuming token, send welcome email after verification
+- [x] Create ResetPassword.tsx page to handle Supabase hash fragment (#access_token=...&type=recovery)
+- [x] Register /reset-password route in App.tsx
+- [x] Login page: detect unverified user error, show resend verification link
+- [x] Profile page: add Resend Verification Email button to the verification banner
+- [x] Write 21 Vitest tests for all fixed flows (351/351 total passing, 0 TS errors)
+
+## Phase 65: Test Suite Fixes (from TTML Test Analysis)
+- [ ] Fix Category 1: Lazy-init Resend in email.ts (module-level crash on undefined API key)
+- [ ] Fix Category 2: Replace stale "employeeProcedure" with "attorneyProcedure" in phase38 test (9 failures)
+- [ ] Fix Category 3: Add describe.skipIf() guards to supabase-auth.test.ts and supabase-realtime.test.ts (15 failures)
+- [ ] Fix Category 4a: Fix invalid "user" role → "subscriber" in ttml.test.ts and auth.logout.test.ts
+- [ ] Fix Category 4b: Fix stale loginMethod "manus" → "email" in ttml.test.ts
+- [ ] Fix Category 4c: Remove duplicate logout test block from ttml.test.ts
+- [ ] Update feature map skill: rate limiting is now IMPLEMENTED (Phase 63)
+- [ ] Run full test suite and confirm 351/351 pass
+
+## Phase 66: Attorney Draft Editing → Approval → Supreme PDF → My Letters Delivery
+- [ ] Audit attorney draft editor in Review Center (can attorneys edit the AI draft?)
+- [ ] Add/fix inline draft editor with save functionality in the Review Center
+- [ ] Add review.saveDraft tRPC procedure for attorneys to save edited drafts
+- [ ] Upgrade PDF generator for supreme professional formatting (letterhead, margins, typography)
+- [ ] Ensure approval flow generates PDF from final content and stores URL on letter record
+- [ ] Fix My Letters page to show approved letters with prominent PDF download links
+- [ ] Write Vitest tests for the full attorney edit → approve → PDF → delivery flow
+
+## Phase 66: Attorney Approval → Supreme PDF → My Letters Delivery (All Letter Types)
+- [ ] Audit PDF generator: find current implementation or confirm it is missing
+- [ ] Build supreme-formatted PDF generator (letterhead, margins, professional typography, approval stamp)
+- [ ] Ensure approve procedure calls PDF generator for ALL letter statuses (generated_unlocked, generated_locked, pending_review)
+- [ ] Verify pdfUrl is stored on letter_requests record after approval
+- [ ] My Letters page: show prominent PDF download card for approved letters
+- [ ] LetterDetail page: show PDF download button prominently for approved letters
+- [ ] Write Vitest tests for the full attorney edit → approve → PDF → delivery flow
+
+## Phase 66: Attorney Approval → PDF → My Letters
+- [x] Upgrade PDF generator: proper legal letter formatting (sender/recipient blocks, date, Re: line, multi-page footer, approval stamp, brand colors)
+- [x] Pass intakeJson to PDF generator from the approve procedure (sender/recipient names and addresses now appear in PDF)
+- [x] My Letters page: show PDF Ready badge (green, Download icon) for approved letters with pdfUrl
+- [x] My Letters page: approved letters show green styling, FileCheck icon, and summary stats in header
+- [x] Write 14 Vitest tests for PDF generation, schema, approval flow, and My Letters UI (365/365 total passing, 0 TS errors)
+
+## Phase 67: Pricing Restructure
+- [x] Update stripe-products.ts: $50 trial review, $200 per-letter, $499/mo starter (4 letters), $799/mo professional (8 letters)
+- [x] Add TRIAL_REVIEW_PRICE_CENTS constant (5000 cents)
+- [x] Update pipeline.ts status note for generated_unlocked
+- [x] Replace sendForReview (free) with payTrialReview ($50 Stripe checkout)
+- [x] Update LetterDetail.tsx GeneratedUnlockedView to use payTrialReview with $50 CTA
+- [x] Update LetterPaywall.tsx with new pricing tiers (free trial $50, per-letter $200, starter $499/mo, professional $799/mo)
+- [x] Update Pricing.tsx with new plan cards
+- [x] Update FAQ.tsx pricing answers
+- [x] Update email.ts letter-ready CTA to reference $50
+- [x] Update stripeWebhook.ts for new plan names (starter/professional)
+- [x] Update Billing.tsx plan display names
+- [x] Apply DB migration: add starter, professional, free_trial_review to subscription_plan enum
+- [x] Write 33 Vitest tests for new pricing model
+- [x] Update stale phase26 and phase66 tests for new plan names
+- [x] 398/398 tests passing, 0 TypeScript errors
+
+## Phase 68: Employee Commission & Coupon System
+- [x] Audit existing employee commission and coupon infrastructure (discount_codes + commission_ledger tables already exist)
+- [x] Backend: auto-generate discount code on employee signup (createDiscountCodeForEmployee called in completeOnboarding)
+- [x] Backend: add discountCode param to createCheckoutSession in stripe.ts (passed in metadata)
+- [x] Backend: add discountCode param to createCheckout tRPC procedure (planId + discountCode)
+- [x] Backend: Stripe webhook — commission tracking for subscription payments in checkout.session.completed
+- [x] Frontend: promo code field on LetterPaywall (all tiers — validate via affiliate.validateCode, show discount, pass to checkout)
+- [x] Frontend: promo code field on LetterDetail $50 trial and $200 per-letter CTAs
+- [x] 398/398 tests passing, 0 TypeScript errors
+
+## Phase 69: Simplified Letter Flow (Single-Path Pipeline + Review Queue Cleanup)
+- [x] Pipeline always ends at generated_locked (removed generated_unlocked bypass and subscriber free-unlock path)
+- [x] STATUS_CONFIG: human-friendly labels — "Draft Ready", "Awaiting Review", "Changes Requested", "Drafting"
+- [x] ALLOWED_TRANSITIONS: removed drafting→generated_unlocked and generated_locked→generated_unlocked
+- [x] LetterPaywall: simplified to single $200 CTA with blurred draft preview (removed $50 trial and subscription upsell)
+- [x] LetterDetail (subscriber): removed generated_unlocked branch, added in-progress status cards, cleaner flow
+- [x] StatusTimeline: rewritten with 6-step simplified flow, no generated_unlocked step
+- [x] ReviewQueue: filter to REVIEW_STATUSES only (pending_review+), added "New" badge for letters < 24h old
+- [x] Tests: 32/32 passing in phase69-letter-flow.test.ts, 0 TypeScript errors
+
+## Phase 70: Draft Ready Email Notification ($200 Attorney Review CTA)
+- [x] Rewrote sendLetterReadyEmail with $200 pricing (removed old $50/free-trial copy)
+- [x] Added letterType and jurisdictionState optional params for richer email context
+- [x] Email includes: letter summary card, "what's included" section (4 benefits), urgency note, amber CTA button
+- [x] Wired letterType + jurisdictionState into pipeline.ts call site
+- [x] Wired letterType + jurisdictionState into n8nCallback.ts call site
+- [x] Fixed n8nCallback.ts fallback paths: Claude-fail and no-intake both land at generated_locked (not pending_review)
+- [x] Updated stale $50 test description in phase67-pricing.test.ts
+- [x] Tests: 7/7 passing in phase70-draft-ready-email.test.ts, 0 TypeScript errors
+
+## Phase 71: Automated 48-Hour Draft Reminder Email
+- [x] Audit existing cron infrastructure and email queue
+- [x] Add draft_reminder_sent_at column to letter_requests table (DB migration via Supabase MCP)
+- [x] Build sendDraftReminderEmail template (urgency-focused orange, $200 CTA, hoursWaiting param)
+- [x] Build processDraftReminders() function: query letters at generated_locked > 48h, draftReminderSentAt IS NULL
+- [x] Created /api/cron/draft-reminders Express route with CRON_SECRET bearer auth
+- [x] Mark draftReminderSentAt after sending to prevent duplicate sends
+- [x] Write tests: 10/10 passing in phase71-draft-reminders.test.ts, 0 TypeScript errors
+- [x] Save checkpoint
+
+## Phase 72: Letter History Page
+- [ ] Audit existing subscriber pages, letter tRPC procedures, and routing
+- [ ] Build LetterHistory page: status cards, filter by status, sort by date/type, empty state
+- [ ] Status badge with human-friendly labels and color coding
+- [ ] Quick-action buttons: View Draft, Pay for Review ($200), Download PDF (approved only)
+- [ ] Wire /letters route and add nav entry to subscriber dashboard
+- [ ] Write tests and save checkpoint
+
+## Phase 73.1: Revalidation Fix — Stale Phase 23 Test
+- [x] Fixed phase23.test.ts: removed generated_unlocked transition expectation (superseded by Phase 69)
+- [x] All 467/467 tests passing, 0 TypeScript errors
+
+## Phase 73: Align n8n Workflow with 3-Stage Pipeline
+
+- [x] Audited current n8n workflow (Pr5n5JlkgBKcwZPe9z678) via n8n REST API — identified 5 gaps
+- [x] Built aligned workflow JSON: 16 nodes, 3 stages matching in-app pipeline
+  - Stage 1: GPT-4o + Perplexity tool → structured ResearchPacket JSON (full schema)
+  - Stage 2: Claude Sonnet 4 → structured DraftOutput JSON (draftLetter, attorneyReviewSummary, openQuestions, riskFlags)
+  - Stage 3: Claude Sonnet 4 → final polished letter text (assembly)
+  - Parse nodes between stages for robust JSON extraction with fallbacks
+  - Callback uses dynamic callbackUrl from incoming payload + structured body
+- [x] Deployed via n8n API: deactivate → PUT update → activate (workflow Pr5n5JlkgBKcwZPe9z678)
+- [x] Rewrote n8nCallback.ts: detects aligned vs legacy payloads, skips local assembly for aligned, stores research version separately
+- [x] Same system/user prompts as pipeline.ts (research, drafting, assembly)
+- [x] Tests: 21/21 passing in phase73-n8n-alignment.test.ts, 0 TypeScript errors
+- [x] Save checkpoint
+
+## Phase 74: Pipeline Status Sync + Cron Scheduler
+
+- [x] Audited both pipelines: direct API (pipeline.ts) and n8n callback (n8nCallback.ts) for status gaps
+- [x] Found gap: n8n callback jumped from researching → generated_locked without setting "drafting"
+- [x] Fixed n8n callback: now transitions researching → drafting → generated_locked (matches direct pipeline)
+- [x] Fixed audit log fromStatus/toStatus values to be accurate in n8n callback
+- [x] Fixed email URL: both pipelines now use canonical production domain (talk-to-my-lawyer.com)
+- [x] Created cronScheduler.ts: in-process node-cron scheduler, runs draft reminders every hour at :00
+- [x] Wired cronScheduler into server startup (server/_core/index.ts)
+- [x] Set CRON_SECRET via webdev_request_secrets
+- [x] Installed node-cron + @types/node-cron
+- [x] Tests: 10/10 passing in phase74-pipeline-sync.test.ts, 477/477 total, 0 TypeScript errors
+- [x] Save checkpoint
+
+## Phase 75: Fix Auth Flow + Employee/Attorney Email Templates
+
+- [x] Created getOriginUrl() helper in supabaseAuth.ts — never falls back to localhost
+- [x] Fixed all 5 localhost fallbacks in supabaseAuth.ts (signup, forgot-password, verify-email, resend-verification, welcome)
+- [x] Fixed all 3 localhost fallbacks in routers.ts (createCheckout, createBillingPortal, updateEmail)
+- [x] Fixed getAppUrl() in routers.ts — canonical domain fallback
+- [ ] User must update Supabase Dashboard site URL to https://www.talk-to-my-lawyer.com (cannot be done via API)
+- [ ] Audit frontend auth pages: signup, login, forgot-password, reset-password, verify-email
+- [ ] Add branded employee notification emails (welcome, new referral, commission earned, payout processed)
+- [ ] Add branded attorney notification emails (new letter assigned, review reminder, letter approved)
+- [ ] Wire employee/attorney emails into signup and relevant procedures
+- [ ] Update ttml-backend-patterns skill with auth flow and email patterns
+- [ ] Write tests and save checkpoint
+
+## Phase 76: Pricing Model Overhaul + Employee/Attorney Email Templates
+
+- [x] Created shared/pricing.ts as single source of truth for pricing constants
+- [x] Rewrote server/stripe-products.ts with new plan IDs: free_trial, per_letter, monthly_basic, monthly_pro
+- [x] Added LEGACY_PLAN_ALIASES for backward compatibility (starter→monthly_basic, professional→monthly_pro, etc.)
+- [x] Updated stripe.ts: removed TRIAL_REVIEW_PRICE_CENTS import, deprecated createTrialReviewCheckout, updated hasActiveRecurringSubscription to support new + legacy plan IDs
+- [x] Updated stripeWebhook.ts: default plan ID changed from starter → monthly_basic
+- [x] Rewrote Pricing.tsx with correct prices ($200/letter, $499/month Basic, $699/month Pro)
+- [x] Updated Home.tsx pricing section with correct prices
+- [x] Updated FAQ.tsx with correct prices
+- [x] Updated Billing.tsx with correct plan names and prices
+- [x] Updated Dashboard.tsx with correct upgrade CTA copy
+- [x] Added 5 new branded email templates: sendEmployeeWelcomeEmail, sendAttorneyWelcomeEmail, sendAttorneyReviewAssignedEmail, sendAttorneyReviewCompletedEmail, sendEmployeeCommissionEarnedEmail
+- [x] Wired role-specific welcome emails into verify-email endpoint (employee → employee welcome, attorney_admin → attorney welcome)
+- [x] Updated phase67-pricing.test.ts to match new plan IDs and prices
+- [x] Updated phase26.test.ts to use monthly_basic/monthly_pro plan IDs
+- [x] All 484 tests passing, 0 TypeScript errors
+
+## Phase 77: Upgrade Subscription Banner on Dashboard
+
+- [ ] Audit Dashboard.tsx subscription display and Billing.tsx plan detection
+- [ ] Build UpgradeBanner component: shown only to Monthly Basic subscribers, highlights Monthly Pro benefits
+- [ ] Wire upgrade CTA to createCheckout mutation with planId=monthly_pro
+- [ ] Add dismissible state (session-level) so banner doesn't block the dashboard
+- [ ] Ensure banner is mobile-responsive
+- [ ] Run tests and save checkpoint
+
+## Phase 78: Security & Performance Fixes (from PR #6 Code Review)
+
+- [x] Fix XSS vulnerability in plainTextToHtml — add DOMPurify sanitization
+- [x] Fix N+1 query in adminEmployeePerformance — batch into 3 queries
+- [x] Write tests for both fixes
+- [x] Save checkpoint and push to GitHub
+
+## Phase 79: Wire Attorney Review Assigned Email
+
+- [x] Wire sendAttorneyReviewAssignedEmail into claimLetterForReview tRPC procedure
+- [x] Write test for the email notification on claim
+- [x] Save checkpoint and push to GitHub
+
+## Phase 80: Wire Employee Commission Email
+
+- [x] Audit stripeWebhook.ts commission creation logic
+- [x] Wire sendEmployeeCommissionEmail into commission creation block
+- [x] Write tests for the commission email notification
+- [x] Save checkpoint and push to GitHub
+
+## Phase 81: Full MySQL/TiDB Removal — Supabase Migration Cleanup
+- [x] Audit all MySQL/TiDB references across entire codebase (9 files + 40 stale .manus/db logs)
+- [x] Remove MySQL from source code: db.ts TiDB fallback log, migration SQL comments
+- [x] Remove MySQL from docs: SPEC_COMPLIANCE.md, CODE_REVIEW_VERIFIED.md, FEATURE_MAP.md, VALIDATION_REPORT_PHASE73.md, references/ai-sdk.md
+- [x] Remove MySQL from tests: supabase-migration.test.ts TiDB URL test data replaced with generic PostgreSQL URL
+- [x] Deleted all 40 stale .manus/db log files containing TiDB/MySQL error output
+- [x] Save checkpoint and push to GitHub
+
+## Phase 82: Discount Codes, First-Letter-Free, Mobile Responsiveness
+
+- [x] Create DiscountCodeInput reusable component
+- [x] Update Pricing page with discount code input, URL param support (?code=XXX), and discounted price display
+- [x] Update LetterPaywall component with discount code support (uses DiscountCodeInput + free-unlock CTA)
+- [x] Update Stripe checkout functions to apply discount codes (Stripe coupons created on-the-fly from DB discount %)
+- [x] Fix Stripe webhook to track commissions with discount codes (already working — verified in audit)
+- [x] Verify first letter free flow works correctly (checkPaywallStatus + freeUnlock + LetterPaywall green CTA)
+- [x] Add mobile responsiveness fixes for key pages (SubmitLetter step overflow, Billing rows, AllLetters filters, employee Dashboard grid, scrollbar-thin utility, safe-area padding)
+- [x] Test all user flows end-to-end (65 new tests in phase82-discount-mobile.test.ts, 573 total passing)
+
+## Phase 82b — Production Deployment & E2E Checklist Audit
+- [x] Stripe checkout metadata: enriched with discount_code_id, employee_id, original_price, final_price
+- [x] Commission calculation: uses session.amount_total (final price after Stripe coupon applied)
+- [x] Webhook idempotency: createCommission now checks for existing stripePaymentIntentId before insert
+- [x] Discount code usage counter: incrementDiscountCodeUsage called in webhook for both payment and subscription modes
+- [x] First-letter-free: checkPaywallStatus returns 'free' when 0 unlocked letters, freeUnlock transitions to pending_review
+- [x] Referral link format: Pricing page now reads both ?code= and ?coupon= URL params
+- [x] Build verification: pnpm build succeeds (0 errors, chunk size warning only)
+- [x] TypeScript: 0 errors (tsc watch confirmed)
+- [x] Full test suite passes (29 files, 573 tests, 0 failures)
+
+## Phase 82c — Unique DB Index on commission_ledger.stripe_payment_intent_id
+- [ ] Add unique index to commission_ledger.stripe_payment_intent_id in Drizzle schema
+- [ ] Generate and apply migration SQL via webdev_execute_sql
+- [ ] Update createCommission to handle unique constraint violations gracefully
+- [ ] Run tests and build verification
+
+## Phase 82d — Full Production Deployment Checklist Audit (10 sections)
+### Section 1: Stripe Integration
+- [x] 1A: Discount codes apply to subscription purchases (resolveStripeCoupon in createCheckoutSession)
+- [x] 1A: Discount codes apply to letter unlock purchases (resolveStripeCoupon in createLetterUnlockCheckout)
+- [x] 1A: Discounted pricing calculated server-side (Stripe coupon created on-the-fly from DB discount %)
+- [x] 1A: Stripe checkout reflects discounted amount (coupon applied via discounts[] in session)
+- [x] 1A: Metadata: discount_code_id, employee_id, original_price, final_price, letter_id all present
+- [x] 1B: Webhook validates session on checkout.session.completed (stripe.webhooks.constructEvent)
+- [x] 1B: Webhook extracts metadata (userId, planId, letterId, discount_code, employee_id)
+- [x] 1B: Webhook creates commission record (5% = 500 basis points of session.amount_total)
+- [x] 1B: Webhook increments discount code usage counter (incrementDiscountCodeUsage called)
+- [x] 1B: Webhook updates letter/subscription status (generated_locked → pending_review for letters)
+- [x] 1B: No duplicate commission entries (app-level check in createCommission + DB unique index uq_commission_ledger_stripe_pi)
+### Section 2: First Letter Free
+- [x] 2: checkPaywallStatus + checkFirstLetterFree verify no prior unlocked letters (notInArray locked statuses)
+- [x] 2: UI shows "First Letter Free" badge + Gift icon (LetterPaywall.tsx line 171-174)
+- [x] 2: Free Unlock Button shown ("Submit for Free Review" CTA, no Stripe)
+- [x] 2: Paid unlock + DiscountCodeInput shown for non-free-eligible users
+- [x] 2: Free unlock → pending_review + sendLetterUnlockedEmail + audit log
+- [x] 2: Paid unlock → Stripe checkout → webhook → pending_review + email
+### Section 3: Subscriber Workflow
+- [x] 3: Intake form submission triggers AI pipeline (submit procedure → runFullPipeline)
+- [x] 3: Pipeline stages: researching → drafting → generated_locked (pipeline.ts lines 200, 313, 446)
+- [x] 3: Paywall screen shown after draft (LetterPaywall component on generated_locked status)
+- [x] 3: First letter free flow works (freeUnlock mutation → pending_review)
+- [x] 3: Subsequent letter paid flow works (payToUnlock → Stripe → webhook → pending_review)
+- [x] 3: Attorney approval → PDF generated (generateAndUploadApprovedPdf) → downloadable in My Letters + LetterDetail
+### Section 4: Attorney Workflow
+- [x] 4: Review queue shows pending_review, under_review, needs_changes (attorneyProcedure.queue)
+- [x] 4: Attorney can claim letter (review.claim → claimLetterForReview → under_review)
+- [x] 4: Attorney can edit via Tiptap rich text editor (RichTextEditor.tsx in ReviewModal)
+- [x] 4: Approve → approved + PDF generated + subscriber email notification
+### Section 5: Employee (Affiliate) Workflow
+- [x] 5: Employee AffiliateDashboard generates referral link /pricing?coupon=CODE
+- [x] 5: Commission created in webhook on checkout.session.completed with discount_code
+- [x] 5: Commission = 5% (500 basis points) of final sale, recorded with employeeId, subscriberId, saleAmount, commissionAmount
+- [x] 5: Employee can request payout (AffiliateDashboard → requestPayout mutation)
+- [x] 5: Admin can review and process payouts (admin/Affiliate.tsx → processPayoutRequest)
+### Section 6: Admin Workflow
+- [x] 6: Filter letters by status (admin.allLetters accepts optional status filter)
+- [x] 6: View failed jobs (admin.failedJobs → Jobs.tsx page)
+- [x] 6: Retry failed AI generations (admin.retryJob → retryPipelineFromStage)
+- [x] 6: Change user roles (admin.updateRole → updateUserRole in db.ts)
+- [x] 6: View affiliate performance metrics (admin/Affiliate.tsx → adminEmployeePerformance)
+- [x] 6: Approve and process payouts (processPayoutRequest with approve/reject actions)
+- [x] 6: Force letter status transitions (admin.forceStatusTransition procedure)
+- [x] 6: RBAC enforced (subscriberProcedure, employeeProcedure, attorneyProcedure, adminProcedure)
+- [x] 6: Audit logging enabled (logReviewAction called on every status transition)
+### Section 7: Mobile Responsiveness
+- [x] 7: Pricing page grid stacks vertically on mobile (grid-cols-1 md:grid-cols-2 lg:grid-cols-4)
+- [x] 7: Discount field responsive (DiscountCodeInput uses flex gap-2, Input + Button auto-stack)
+- [x] 7: Letter Paywall CTA buttons full-width on mobile (w-full sm:w-auto, flex-col sm:flex-row)
+- [x] 7: All buttons touch-friendly (h-9+ heights, px-4+ padding, proper tap targets)
+### Section 8: Build & Type Safety
+- [x] 8: Vite 7 compatible (vite ^7.1.7)
+- [x] 8: TypeScript 0 errors, 0 implicit anys (tsc watch confirmed)
+- [x] 8: Production build clean output (CI=1 pnpm build succeeds, chunk size warning only)
+- [x] 8: Unique index on commission_ledger.stripe_payment_intent_id applied (verified in Supabase)
+### Section 9: Full System Testing
+- [x] 9: All test files pass (29 files, 573 tests, 0 failures)
+### Section 10: Production Readiness
+- [x] 10: All flows work end-to-end (verified via code audit of all procedures + UI components)
+- [x] 10: First letter free logic cannot be exploited (server-side double-check in freeUnlock + RBAC)
+- [x] 10: Role-based permissions enforced (4 procedure guards: subscriber, employee, attorney, admin)
+
+## Phase 83 — Code-Splitting for Frontend Bundle
+- [x] Analyze current bundle size and identify splitting targets (baseline: 2,138 kB single chunk)
+- [x] Convert admin pages to React.lazy() dynamic imports
+- [x] Convert employee pages to React.lazy() dynamic imports
+- [x] Convert attorney/review pages to React.lazy() dynamic imports
+- [x] Convert subscriber pages to React.lazy() dynamic imports
+- [x] Convert public pages (Pricing, FAQ, etc.) to React.lazy() dynamic imports
+- [x] Create PublicPageSkeleton (for Pricing, FAQ, Onboarding)
+- [x] Create AuthPageSkeleton (for ForgotPassword, VerifyEmail, ResetPassword)
+- [x] Create SubscriberPageSkeleton (7 variants: Dashboard, SubmitLetter, MyLetters, LetterDetail, Billing, Receipts, Profile)
+- [x] Create AttorneyPageSkeleton (3 variants: Dashboard, ReviewQueue, ReviewDetail)
+- [x] Create EmployeePageSkeleton (AffiliateDashboard)
+- [x] Create AdminPageSkeleton (6 variants: Dashboard, Users, Jobs, AllLetters, LetterDetail, Affiliate)
+- [x] Wire per-route Suspense boundaries with matching skeletons in App.tsx (20 unique skeleton variants)
+- [x] Configure Vite manual chunks for vendor libraries (Tiptap, Recharts, Stripe, Supabase, Radix, Framer, PDF, AI SDK, Icons, React)
+- [x] Verify build output shows 41 chunks (was 1), largest 357 kB (was 2,138 kB)
+- [x] Run full test suite — 29 files, 573 tests, 0 failures
+- [x] Measure improvement: initial bundle 357 kB (83% reduction from 2,138 kB baseline)
+
+## Phase 84 — Sentry Error Monitoring Integration
+- [x] Install @sentry/react 10.40.0 and @sentry/node 10.40.0
+- [x] Request SENTRY_DSN, VITE_SENTRY_DSN, SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT secrets set
+- [x] Configure client-side Sentry init (React error boundary, performance tracing, session replay)
+- [x] Configure server-side Sentry init (Express request handler, tRPC error handler, setupExpressErrorHandler)
+- [x] Add custom Sentry context: user role (context.ts), pipeline stage tags, Stripe webhook event type tags
+- [x] Instrument ErrorBoundary component with Sentry.captureException + componentDidCatch
+- [x] Add Sentry breadcrumbs to critical paths (pipeline 4 catch blocks, webhook 3 catch blocks, tRPC context user)
+- [x] Verify build passes with Sentry integration (0 errors, 41 chunks)
+- [x] Run full test suite — 30 files, 617 tests (44 new Sentry tests), 0 failures
+
+## Phase 85 — Sentry Alert Rules Configuration
+- [x] Verify Sentry API authentication with auth token (org: wwwtalk-to-my-lawyercom, project: sentry-pink-notebook)
+- [x] Create alert rule: 🚨 AI Pipeline Failure (id: 16739013, filter: pipeline_stage tag)
+- [x] Create alert rule: 💳 Stripe Webhook Error (id: 16739014, filter: component=stripe_webhook)
+- [x] Create alert rule: 📈 High Error Rate Spike (id: 16739015, >10 events/hour)
+- [x] Verify all 4 alert rules active in Sentry (3 new + 1 existing high-priority)

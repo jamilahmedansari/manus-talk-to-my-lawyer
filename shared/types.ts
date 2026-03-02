@@ -10,9 +10,8 @@ export * from "./_core/errors";
 export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   submitted: ["researching"],
   researching: ["drafting"],
-  drafting: ["generated_locked", "generated_unlocked"], // AI pipeline → locked (returning) or unlocked (first-letter-free)
-  generated_locked: ["generated_unlocked", "pending_review"], // free unlock or paid → attorney review
-  generated_unlocked: ["pending_review"], // subscriber sends for attorney review
+  drafting: ["generated_locked"], // AI pipeline always ends here
+  generated_locked: ["pending_review"], // subscriber pays $200 → Stripe webhook transitions to pending_review
   pending_review: ["under_review"],
   under_review: ["approved", "rejected", "needs_changes"],
   needs_changes: ["researching", "drafting"],
@@ -26,12 +25,12 @@ export function isValidTransition(from: string, to: string): boolean {
 export const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
   submitted: { label: "Submitted", color: "text-blue-600", bgColor: "bg-blue-100" },
   researching: { label: "Researching", color: "text-indigo-600", bgColor: "bg-indigo-100" },
-  drafting: { label: "AI Drafting", color: "text-purple-600", bgColor: "bg-purple-100" },
-  generated_locked: { label: "Ready to Unlock", color: "text-yellow-700", bgColor: "bg-yellow-100" },
-  generated_unlocked: { label: "AI Draft Ready", color: "text-green-700", bgColor: "bg-green-100" },
-  pending_review: { label: "Pending Review", color: "text-amber-600", bgColor: "bg-amber-100" },
+  drafting: { label: "Drafting", color: "text-purple-600", bgColor: "bg-purple-100" },
+  generated_locked: { label: "Draft Ready", color: "text-yellow-700", bgColor: "bg-yellow-100" },
+  generated_unlocked: { label: "Draft Ready", color: "text-yellow-700", bgColor: "bg-yellow-100" }, // legacy compat
+  pending_review: { label: "Awaiting Review", color: "text-amber-600", bgColor: "bg-amber-100" },
   under_review: { label: "Under Review", color: "text-orange-600", bgColor: "bg-orange-100" },
-  needs_changes: { label: "Needs Changes", color: "text-red-600", bgColor: "bg-red-100" },
+  needs_changes: { label: "Changes Requested", color: "text-red-600", bgColor: "bg-red-100" },
   approved: { label: "Approved", color: "text-green-600", bgColor: "bg-green-100" },
   rejected: { label: "Rejected", color: "text-red-700", bgColor: "bg-red-200" },
 };

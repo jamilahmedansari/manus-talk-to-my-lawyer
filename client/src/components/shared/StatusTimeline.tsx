@@ -1,19 +1,29 @@
-import { CheckCircle2, Circle, Clock, AlertTriangle, XCircle, Loader2, Lock, Unlock } from "lucide-react";
+import { CheckCircle2, Circle, Clock, AlertTriangle, XCircle, Loader2, FileCheck, Gavel } from "lucide-react";
 
+/**
+ * Simplified status timeline for the new flow:
+ *   submitted → researching → drafting → generated_locked → pending_review → under_review → approved/rejected/needs_changes
+ *
+ * generated_unlocked is kept as a legacy alias for generated_locked (same step, same label).
+ */
 const STATUS_STEPS = [
-  { key: "submitted", label: "Submitted", icon: Circle },
-  { key: "researching", label: "Researching", icon: Loader2 },
-  { key: "drafting", label: "Drafting", icon: Loader2 },
-  { key: "generated_locked", label: "Ready to Unlock", icon: Lock },
-  { key: "generated_unlocked", label: "Draft Ready", icon: Unlock },
-  { key: "pending_review", label: "Pending Review", icon: Clock },
-  { key: "under_review", label: "Under Review", icon: Clock },
+  { key: "submitted",        label: "Submitted",         description: "Intake received" },
+  { key: "researching",      label: "Researching",       description: "Legal research in progress" },
+  { key: "drafting",         label: "Drafting",          description: "Letter being drafted" },
+  { key: "generated_locked", label: "Draft Ready",       description: "Pay to submit for review" },
+  { key: "pending_review",   label: "Awaiting Review",   description: "In the attorney queue" },
+  { key: "under_review",     label: "Under Review",      description: "Attorney reviewing" },
 ] as const;
 
+// generated_unlocked maps to the same step index as generated_locked (legacy)
+const STATUS_KEY_MAP: Record<string, string> = {
+  generated_unlocked: "generated_locked",
+};
+
 const TERMINAL_STATUSES: Record<string, { label: string; icon: typeof CheckCircle2; color: string }> = {
-  approved: { label: "Approved", icon: CheckCircle2, color: "text-emerald-500" },
-  rejected: { label: "Rejected", icon: XCircle, color: "text-red-500" },
-  needs_changes: { label: "Needs Changes", icon: AlertTriangle, color: "text-amber-500" },
+  approved:      { label: "Approved",          icon: CheckCircle2,  color: "text-emerald-500" },
+  rejected:      { label: "Rejected",          icon: XCircle,       color: "text-red-500" },
+  needs_changes: { label: "Changes Requested", icon: AlertTriangle, color: "text-amber-500" },
 };
 
 interface StatusTimelineProps {
@@ -22,27 +32,21 @@ interface StatusTimelineProps {
 }
 
 export default function StatusTimeline({ currentStatus, className }: StatusTimelineProps) {
-  const currentIdx = STATUS_STEPS.findIndex((s) => s.key === currentStatus);
+  // Normalise legacy status aliases
+  const normalisedStatus = STATUS_KEY_MAP[currentStatus] ?? currentStatus;
+  const currentIdx = STATUS_STEPS.findIndex((s) => s.key === normalisedStatus);
   const isTerminal = currentStatus in TERMINAL_STATUSES;
 
   return (
     <div className={`space-y-1 ${className ?? ""}`}>
-      <h4 className="text-sm font-semibold text-muted-foreground mb-3">Status Timeline</h4>
+      <h4 className="text-sm font-semibold text-muted-foreground mb-3">Progress</h4>
       <div className="relative">
         {STATUS_STEPS.map((step, idx) => {
           const isComplete = currentIdx > idx || isTerminal;
           const isCurrent = currentIdx === idx && !isTerminal;
           const isInProgress = isCurrent && (step.key === "researching" || step.key === "drafting");
-          const isPaywall = isCurrent && step.key === "generated_locked";
-          const isUnlocked = isCurrent && step.key === "generated_unlocked";
-
-          // Skip generated_locked step if the letter went through generated_unlocked path (and vice versa)
-          if (step.key === "generated_locked" && currentStatus === "generated_unlocked") return null;
-          if (step.key === "generated_unlocked" && currentStatus === "generated_locked") return null;
-          // For statuses past both, show whichever was used (hide the other)
-          if (step.key === "generated_locked" && currentIdx > STATUS_STEPS.findIndex(s => s.key === "generated_unlocked")) return null;
-          if (step.key === "generated_unlocked" && currentIdx > STATUS_STEPS.findIndex(s => s.key === "generated_locked") && currentStatus !== "generated_unlocked") return null;
-          const Icon = step.icon;
+          const isDraftReady = isCurrent && step.key === "generated_locked";
+          const isWaiting = isCurrent && (step.key === "pending_review" || step.key === "under_review");
 
           return (
             <div key={step.key} className="flex items-start gap-3 relative">
@@ -61,10 +65,10 @@ export default function StatusTimeline({ currentStatus, className }: StatusTimel
                 ) : isCurrent ? (
                   isInProgress ? (
                     <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-                  ) : isPaywall ? (
-                    <Lock className="w-6 h-6 text-amber-500" />
-                  ) : isUnlocked ? (
-                    <Unlock className="w-6 h-6 text-green-500" />
+                  ) : isDraftReady ? (
+                    <FileCheck className="w-6 h-6 text-yellow-500" />
+                  ) : isWaiting ? (
+                    <Gavel className="w-6 h-6 text-amber-500" />
                   ) : (
                     <Clock className="w-6 h-6 text-blue-500" />
                   )
@@ -73,22 +77,28 @@ export default function StatusTimeline({ currentStatus, className }: StatusTimel
                 )}
               </div>
               {/* Label */}
-              <span
-                className={`text-sm pb-4 ${
-                  isComplete
-                    ? "text-emerald-600 font-medium"
-                    : isPaywall
-                    ? "text-amber-600 font-semibold"
-                    : isCurrent
-                    ? "text-blue-600 font-semibold"
-                    : "text-muted-foreground/50"
-                }`}
-              >
-                {step.label}
-                {isInProgress && <span className="ml-2 text-xs text-blue-400">(in progress...)</span>}
-                {isPaywall && <span className="ml-2 text-xs text-amber-500">(payment required)</span>}
-                {isUnlocked && <span className="ml-2 text-xs text-green-500">(free — ready to send for review)</span>}
-              </span>
+              <div className="pb-4">
+                <span
+                  className={`text-sm block ${
+                    isComplete
+                      ? "text-emerald-600 font-medium"
+                      : isDraftReady
+                      ? "text-yellow-700 font-semibold"
+                      : isWaiting
+                      ? "text-amber-600 font-semibold"
+                      : isCurrent
+                      ? "text-blue-600 font-semibold"
+                      : "text-muted-foreground/50"
+                  }`}
+                >
+                  {step.label}
+                  {isInProgress && <span className="ml-2 text-xs text-blue-400">(in progress...)</span>}
+                  {isDraftReady && <span className="ml-2 text-xs text-yellow-500">(payment required)</span>}
+                </span>
+                {isCurrent && (
+                  <span className="text-xs text-muted-foreground">{step.description}</span>
+                )}
+              </div>
             </div>
           );
         })}

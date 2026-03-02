@@ -21,11 +21,9 @@ import { ENV } from "./_core/env";
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
-  // SUPABASE_DATABASE_URL takes priority over the platform-injected TiDB DATABASE_URL
   const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
   if (!_db && dbUrl) {
     try {
-      const isSupabase = dbUrl.includes('supabase');
       const client = postgres(dbUrl, {
         ssl: 'require',
         max: 10,
@@ -33,7 +31,7 @@ export async function getDb() {
         connect_timeout: 10,
       });
       _db = drizzle(client);
-      console.log(`[Database] Connected to ${isSupabase ? 'Supabase (PostgreSQL)' : 'TiDB'}`);
+      console.log('[Database] Connected to Supabase (PostgreSQL)');
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -99,11 +97,24 @@ export async function updateUserRole(userId: number, role: "subscriber" | "emplo
   await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
+export async function updateUserProfile(userId: number, data: { name?: string; email?: string }) {
+  const db = await getDb();
+  if (!db) return;
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (data.name !== undefined) set.name = data.name;
+  if (data.email !== undefined) set.email = data.email;
+  await db.update(users).set(set as any).where(eq(users.id, userId));
+}
+
 export async function getEmployees() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(users).where(inArray(users.role, ["employee", "admin"])).orderBy(users.name);
 }
+
+// ═══════════════════════════════════════════════════════
+// LETTER REQUEST HELPERS
+// ═══════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════
 // LETTER REQUEST HELPERS
@@ -277,6 +288,8 @@ export async function countCompletedLetters(userId: number, excludeLetterId?: nu
 // LETTER VERSION HELPERS
 // ═══════════════════════════════════════════════════════
 
+// ─── Letter Versions ────────────────────────────────────
+
 export async function createLetterVersion(data: {
   letterRequestId: number;
   versionType: "ai_draft" | "attorney_edit" | "final_approved";
@@ -324,6 +337,8 @@ export async function getLetterVersionById(id: number) {
 // REVIEW ACTION HELPERS (AUDIT TRAIL)
 // ═══════════════════════════════════════════════════════
 
+// ─── Review Actions ─────────────────────────────────────
+
 export async function logReviewAction(data: {
   letterRequestId: number;
   reviewerId?: number;
@@ -362,6 +377,10 @@ export async function getReviewActions(letterRequestId: number, includeInternal 
 
 // ═══════════════════════════════════════════════════════
 // WORKFLOW JOB HELPERS
+// ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// PIPELINE: WORKFLOW JOBS
 // ═══════════════════════════════════════════════════════
 
 export async function createWorkflowJob(data: {
@@ -432,6 +451,8 @@ export async function purgeFailedJobs(): Promise<{ deletedCount: number }> {
 // RESEARCH RUN HELPERS
 // ═══════════════════════════════════════════════════════
 
+// ─── Pipeline: Research Runs ─────────────────────────────
+
 export async function createResearchRun(data: {
   letterRequestId: number;
   workflowJobId?: number;
@@ -488,6 +509,10 @@ export async function getLatestResearchRun(letterRequestId: number) {
 // ATTACHMENT HELPERS
 // ═══════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════
+// ATTACHMENTS
+// ═══════════════════════════════════════════════════════
+
 export async function createAttachment(data: {
   letterRequestId: number;
   uploadedByUserId: number;
@@ -511,6 +536,10 @@ export async function getAttachmentsByLetterId(letterRequestId: number) {
 
 // ═══════════════════════════════════════════════════════
 // NOTIFICATION HELPERS
+// ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
 export async function createNotification(data: {
@@ -564,6 +593,10 @@ export async function markAllNotificationsRead(userId: number) {
 // ADMIN STATS HELPERS
 // ═══════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════
+// ADMIN: SYSTEM STATS
+// ═══════════════════════════════════════════════════════
+
 export async function getSystemStats() {
   const db = await getDb();
   if (!db) return null;
@@ -575,13 +608,25 @@ export async function getSystemStats() {
   const [failedJobs] = await db.select({ count: sql<number>`count(*)` }).from(workflowJobs).where(eq(workflowJobs.status, "failed"));
   const [totalUsers] = await db.select({ count: sql<number>`count(*)` }).from(users);
   const [subscribers] = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, "subscriber"));
+  // Per-status breakdown for admin dashboard charts
+  const statusRows = await db
+    .select({ status: letterRequests.status, count: sql<number>`count(*)` })
+    .from(letterRequests)
+    .groupBy(letterRequests.status);
+  const byStatus: Record<string, number> = {};
+  for (const row of statusRows) {
+    byStatus[row.status] = Number(row.count);
+  }
+  const approvedLetters = Number(approved?.count ?? 0);
   return {
     totalLetters: Number(totalLetters?.count ?? 0),
     pendingReview: Number(pendingReview?.count ?? 0),
-    approved: Number(approved?.count ?? 0),
+    approved: approvedLetters,
+    approvedLetters,
     failedJobs: Number(failedJobs?.count ?? 0),
     totalUsers: Number(totalUsers?.count ?? 0),
     subscribers: Number(subscribers?.count ?? 0),
+    byStatus,
   };
 }
 
@@ -597,6 +642,10 @@ function generateDiscountCode(employeeName: string): string {
   const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `${prefix}-${suffix}`;
 }
+
+// ═══════════════════════════════════════════════════════
+// AFFILIATE: DISCOUNT CODES & COMMISSIONS
+// ═══════════════════════════════════════════════════════
 
 export async function createDiscountCodeForEmployee(employeeId: number, employeeName: string) {
   const db = await getDb();
@@ -667,6 +716,19 @@ export async function createCommission(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // ─── Idempotency: prevent duplicate commissions for the same Stripe payment ───
+  if (data.stripePaymentIntentId) {
+    const existing = await db.select({ id: commissionLedger.id })
+      .from(commissionLedger)
+      .where(eq(commissionLedger.stripePaymentIntentId, data.stripePaymentIntentId))
+      .limit(1);
+    if (existing.length > 0) {
+      console.log(`[Commission] Duplicate prevented: commission already exists for PI ${data.stripePaymentIntentId}`);
+      return existing[0];
+    }
+  }
+
   const result = await db.insert(commissionLedger).values({
     employeeId: data.employeeId,
     letterRequestId: data.letterRequestId,
@@ -705,6 +767,37 @@ export async function getEmployeeEarningsSummary(employeeId: number) {
   return { totalEarned, pending, paid, referralCount };
 }
 
+/** Batch version: returns earnings summary for ALL employees in a single query.
+ *  Used by adminEmployeePerformance to avoid N+1 queries. */
+export async function getAllEmployeeEarnings(): Promise<
+  Array<{ employeeId: number; totalEarned: number; pending: number; paid: number; referralCount: number }>
+> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    employeeId: commissionLedger.employeeId,
+    status: commissionLedger.status,
+    amount: commissionLedger.commissionAmount,
+  }).from(commissionLedger);
+
+  // Aggregate in memory, grouped by employeeId
+  const map = new Map<number, { totalEarned: number; pending: number; paid: number; referralCount: number }>();
+  for (const row of rows) {
+    if (row.status === "voided") continue;
+    let entry = map.get(row.employeeId);
+    if (!entry) {
+      entry = { totalEarned: 0, pending: 0, paid: 0, referralCount: 0 };
+      map.set(row.employeeId, entry);
+    }
+    entry.totalEarned += row.amount;
+    if (row.status === "pending") entry.pending += row.amount;
+    if (row.status === "paid") entry.paid += row.amount;
+    entry.referralCount += 1;
+  }
+
+  return Array.from(map.entries()).map(([employeeId, data]) => ({ employeeId, ...data }));
+}
+
 export async function getAllCommissions() {
   const db = await getDb();
   if (!db) return [];
@@ -723,6 +816,8 @@ export async function markCommissionsPaid(commissionIds: number[]) {
 // ═══════════════════════════════════════════════════════
 // PAYOUT REQUEST HELPERS
 // ═══════════════════════════════════════════════════════
+
+// ─── Affiliate: Payout Requests ──────────────────────────
 
 export async function createPayoutRequest(data: {
   employeeId: number;
@@ -809,12 +904,14 @@ export async function findValidVerificationToken(token: string) {
   return result[0];
 }
 
-/** Mark a verification token as used and mark the user as verified */
+/** Mark a verification token as used and mark the user as verified.
+ * Returns the token record (with userId and email) on success, or null if invalid/expired.
+ */
 export async function consumeVerificationToken(token: string) {
   const db = await getDb();
-  if (!db) return false;
+  if (!db) return null;
   const record = await findValidVerificationToken(token);
-  if (!record) return false;
+  if (!record) return null;
   // Mark token as used
   await db
     .update(emailVerificationTokens)
@@ -825,7 +922,7 @@ export async function consumeVerificationToken(token: string) {
     .update(users)
     .set({ emailVerified: true, updatedAt: new Date() })
     .where(eq(users.id, record.userId));
-  return true;
+  return record; // { userId, email, ... }
 }
 
 /** Delete any existing unused tokens for a user (before issuing a new one) */

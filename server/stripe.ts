@@ -5,10 +5,57 @@
 
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
-import { getDb, countCompletedLetters } from "./db";
+import { getDb, countCompletedLetters, getDiscountCodeByCode } from "./db";
 import { subscriptions } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { PLANS, getPlanConfig, LETTER_UNLOCK_PRICE_CENTS } from "./stripe-products";
+import { PLANS, getPlanConfig, LETTER_UNLOCK_PRICE_CENTS, MONTHLY_BASIC_PRICE_CENTS, MONTHLY_PRO_PRICE_CENTS } from "./stripe-products";
+
+/**
+ * Resolves a discount code from our DB into a Stripe coupon ID.
+ * Creates a Stripe coupon on-the-fly if the code is valid and active.
+ * Returns the coupon ID + discount code details for metadata enrichment,
+ * or null if the code is invalid/expired.
+ */
+interface ResolvedDiscount {
+  stripeCouponId: string;
+  discountCodeId: number;
+  employeeId: number;
+  discountPercent: number;
+}
+
+async function resolveStripeCoupon(discountCode: string | undefined): Promise<ResolvedDiscount | null> {
+  if (!discountCode) return null;
+  try {
+    const code = await getDiscountCodeByCode(discountCode);
+    if (!code || !code.isActive) return null;
+    if (code.maxUses && code.usageCount >= code.maxUses) return null;
+    if (code.expiresAt && new Date(code.expiresAt) < new Date()) return null;
+
+    const stripe = getStripe();
+    // Use a deterministic coupon ID so we reuse the same Stripe coupon for the same discount %
+    const couponId = `ttml_${code.discountPercent}pct`;
+    try {
+      await stripe.coupons.retrieve(couponId);
+    } catch {
+      // Coupon doesn't exist yet — create it
+      await stripe.coupons.create({
+        id: couponId,
+        percent_off: code.discountPercent,
+        duration: "once",
+        name: `${code.discountPercent}% Off — Referral Discount`,
+      });
+    }
+    return {
+      stripeCouponId: couponId,
+      discountCodeId: code.id,
+      employeeId: code.employeeId,
+      discountPercent: code.discountPercent,
+    };
+  } catch (err) {
+    console.error("[Stripe] Failed to resolve discount coupon:", err);
+    return null;
+  }
+}
 
 // ─── Stripe Client ───────────────────────────────────────────────────────────
 let _stripe: Stripe | null = null;
@@ -63,24 +110,42 @@ export async function createCheckoutSession(params: {
   name?: string | null;
   planId: string;
   origin: string;
+  discountCode?: string;
 }): Promise<{ url: string; sessionId: string }> {
-  const { userId, email, name, planId, origin } = params;
+  const { userId, email, name, planId, origin, discountCode } = params;
   const plan = getPlanConfig(planId);
   if (!plan) throw new Error(`Invalid plan: ${planId}`);
 
   const stripe = getStripe();
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
+  // Resolve discount code to a Stripe coupon + metadata
+  const resolved = await resolveStripeCoupon(discountCode);
+  const originalPriceCents = plan.price;
+  const finalPriceCents = resolved
+    ? Math.round(originalPriceCents * (1 - resolved.discountPercent / 100))
+    : originalPriceCents;
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: customerId,
     client_reference_id: userId.toString(),
     payment_method_types: ["card"],
-    allow_promotion_codes: true,
+    // Only allow Stripe's built-in promo codes if no custom discount is applied
+    ...(resolved
+      ? { discounts: [{ coupon: resolved.stripeCouponId }] }
+      : { allow_promotion_codes: true }),
     metadata: {
       user_id: userId.toString(),
       plan_id: planId,
       customer_email: email,
       customer_name: name ?? "",
+      original_price: originalPriceCents.toString(),
+      final_price: finalPriceCents.toString(),
+      ...(discountCode ? { discount_code: discountCode } : {}),
+      ...(resolved ? {
+        discount_code_id: resolved.discountCodeId.toString(),
+        employee_id: resolved.employeeId.toString(),
+      } : {}),
     },
     success_url: `${origin}/subscriber/billing?success=true&plan=${planId}`,
     cancel_url: `${origin}/pricing?canceled=true`,
@@ -299,8 +364,34 @@ export async function hasActiveRecurringSubscription(userId: number): Promise<bo
   const sub = await getUserSubscription(userId);
   if (!sub) return false;
   if (sub.status !== "active") return false;
-  // per_letter is a one-time payment, not a recurring subscription
-  return sub.plan === "monthly" || sub.plan === "annual";
+  // per_letter and free_trial are one-time, not recurring subscriptions
+  // Support both new plan IDs and legacy aliases
+  return [
+    "monthly_basic",
+    "monthly_pro",
+    "starter",       // legacy alias for monthly_basic
+    "professional",  // legacy alias for monthly_pro
+  ].includes(sub.plan);
+}
+
+// ─── Create Trial Review Checkout (DEPRECATED — first letter is now fully free) ────────
+/**
+ * @deprecated The first letter is now completely free (no $50 trial review fee).
+ * This function is kept for backward compatibility with any existing webhook
+ * events that may reference the old free_trial_review plan.
+ * New code should NOT call this function.
+ */
+export async function createTrialReviewCheckout(params: {
+  userId: number;
+  email: string;
+  name?: string | null;
+  letterId: number;
+  origin: string;
+  discountCode?: string;
+}): Promise<{ url: string; sessionId: string }> {
+  console.warn("[Stripe] createTrialReviewCheckout is deprecated — first letter is now free");
+  // Redirect to the letter unlock checkout instead (which handles free-trial letters)
+  return createLetterUnlockCheckout({ ...params });
 }
 
 // ─── Create Letter Unlock Checkout (pay-to-unlock paywall) ───────────────────
@@ -321,11 +412,21 @@ export async function createLetterUnlockCheckout(params: {
   const stripe = getStripe();
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
+  // Resolve discount code to a Stripe coupon + metadata
+  const resolved = await resolveStripeCoupon(discountCode);
+  const originalPriceCents = LETTER_UNLOCK_PRICE_CENTS;
+  const finalPriceCents = resolved
+    ? Math.round(originalPriceCents * (1 - resolved.discountPercent / 100))
+    : originalPriceCents;
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     client_reference_id: userId.toString(),
     mode: "payment",
     payment_method_types: ["card"],
+    ...(resolved
+      ? { discounts: [{ coupon: resolved.stripeCouponId }] }
+      : { allow_promotion_codes: true }),
     metadata: {
       user_id: userId.toString(),
       plan_id: "per_letter",
@@ -333,7 +434,13 @@ export async function createLetterUnlockCheckout(params: {
       unlock_type: "letter_unlock",
       customer_email: email,
       customer_name: name ?? "",
+      original_price: originalPriceCents.toString(),
+      final_price: finalPriceCents.toString(),
       ...(discountCode ? { discount_code: discountCode } : {}),
+      ...(resolved ? {
+        discount_code_id: resolved.discountCodeId.toString(),
+        employee_id: resolved.employeeId.toString(),
+      } : {}),
     },
     line_items: [
       {
@@ -357,8 +464,8 @@ export async function createLetterUnlockCheckout(params: {
         unlock_type: "letter_unlock",
       },
     },
-    success_url: `${origin}/subscriber/letters/${letterId}?unlocked=true`,
-    cancel_url: `${origin}/subscriber/letters/${letterId}?canceled=true`,
+    success_url: `${origin}/letters/${letterId}?unlocked=true`,
+    cancel_url: `${origin}/letters/${letterId}?canceled=true`,
   });
 
   if (!session.url) throw new Error("Stripe did not return a checkout URL");

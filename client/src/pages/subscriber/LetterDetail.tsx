@@ -13,90 +13,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useLetterRealtime } from "@/hooks/useLetterRealtime";
 
-// Statuses that require active polling (AI pipeline in progress or awaiting action)
+// Statuses that require active polling (pipeline in progress or awaiting action)
 const POLLING_STATUSES = ["submitted", "researching", "drafting", "pending_review", "under_review"];
-
-/**
- * First-letter-free view: shows the full AI draft with a "Send for Attorney Review" CTA.
- * The subscriber can read the entire letter before deciding to send it for review.
- */
-function GeneratedUnlockedView({ letterId, draftContent }: { letterId: number; draftContent: string }) {
-  const utils = trpc.useUtils();
-  const sendForReview = trpc.billing.sendForReview.useMutation({
-    onSuccess: () => {
-      toast.success("Letter submitted for review", {
-        description: "You'll receive an email when the review is complete.",
-        duration: 6000,
-      });
-      utils.letters.detail.invalidate({ id: letterId });
-    },
-    onError: (err: any) => toast.error("Submission failed", { description: err.message ?? "Please try again or contact support." }),
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* Success banner */}
-      <Card className="border-green-200 bg-green-50/30">
-        <CardContent className="p-5">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-green-800">Your First Letter Is Free!</p>
-              <p className="text-sm text-green-700 mt-1">
-                Read your AI-generated draft below. When you're ready, send it for attorney review at no charge.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Full AI draft */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            AI-Generated Draft
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-muted/30 border border-border rounded-lg p-5">
-            <pre className="text-sm text-foreground whitespace-pre-wrap font-mono leading-relaxed">
-              {draftContent || "Draft content is loading..."}
-            </pre>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Send for Review CTA */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Ready for Attorney Review?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                A licensed attorney will review, edit, and approve your letter before it's finalized.
-              </p>
-            </div>
-            <Button
-              onClick={() => sendForReview.mutate({ letterId })}
-              disabled={sendForReview.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto"
-            >
-              {sendForReview.isPending ? (
-                "Sending..."
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Send for Attorney Review — Free
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 export default function LetterDetail() {
   const params = useParams<{ id: string }>();
@@ -113,7 +31,7 @@ export default function LetterDetail() {
         duration: 6000,
       });
     } else if (searchParams.get("canceled") === "true") {
-      toast.info("Checkout canceled", { description: "No charges were made. Your letter is still ready whenever you are." });
+      toast.info("Checkout canceled", { description: "No charges were made. Your letter draft is still ready whenever you are." });
     }
   }, [search]);
 
@@ -132,20 +50,16 @@ export default function LetterDetail() {
   const utils = trpc.useUtils();
 
   // Supabase Realtime — instant status updates without polling
-  // Falls back gracefully to polling if Supabase is not configured
   useLetterRealtime({
     letterId: letterId || null,
     enabled: !!letterId,
     onStatusChange: ({ newStatus }) => {
-      // Invalidate the query to trigger an immediate refetch
       utils.letters.detail.invalidate({ id: letterId });
-      // Show a toast notification for meaningful transitions
       const statusLabels: Record<string, string> = {
-        researching: "Researching your legal situation...",
+        researching: "Our team is researching your legal situation...",
         drafting: "Drafting your letter...",
         generated_locked: "Your letter draft is ready!",
-        generated_unlocked: "Your first free letter draft is ready to read!",
-        pending_review: "Sent to attorney review.",
+        pending_review: "Sent to attorney review queue.",
         under_review: "An attorney is reviewing your letter.",
         approved: "Your letter has been approved!",
         rejected: "Your letter request was rejected.",
@@ -189,7 +103,7 @@ export default function LetterDetail() {
 
   const updateMutation = trpc.letters.updateForChanges.useMutation({
     onSuccess: () => {
-      toast.success("Response submitted", { description: "The AI pipeline is re-processing your letter with the new information." });
+      toast.success("Response submitted", { description: "Our legal team is re-processing your letter with the new information." });
       setUpdateText("");
     },
     onError: (err) => toast.error("Submission failed", { description: err.message }),
@@ -204,12 +118,10 @@ export default function LetterDetail() {
   };
 
   const handleDownloadPdf = () => {
-    // If server-generated PDF exists, download it directly
     if (data?.letter?.pdfUrl) {
       window.open(data.letter.pdfUrl, "_blank");
       return;
     }
-    // Fallback to browser print dialog
     handleDownloadFallback();
   };
 
@@ -218,7 +130,6 @@ export default function LetterDetail() {
     const finalVersion = data.versions.find((v) => v.versionType === "final_approved");
     if (!finalVersion) return;
 
-    // Generate a print-ready HTML page and trigger browser PDF save
     const letterContent = finalVersion.content
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -244,16 +155,15 @@ export default function LetterDetail() {
 <body>
   <div class="header">
     <div class="brand">⚖️ Talk to My Lawyer — Attorney-Approved Legal Letter</div>
-    <div class="meta">Letter #${letterId} &bull; ${data.letter.letterType.replace(/-/g, " ")} &bull; ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>
+    <div class="meta">Letter #${letterId} &bull; ${data?.letter?.letterType?.replace(/-/g, " ") ?? ""} &bull; ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>
   </div>
   <div class="letter-body">${letterContent}</div>
-  <div class="footer">This letter was reviewed and approved by a licensed attorney via Talk to My Lawyer. &copy; ${new Date().getFullYear()} Talk to My Lawyer</div>
+  <div class="footer">This letter was reviewed and approved by a licensed attorney via Talk to My Lawyer. Document ID: #${letterId}</div>
 </body>
 </html>`;
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      // Fallback: download as HTML file
       const blob = new Blob([printHtml], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -266,10 +176,7 @@ export default function LetterDetail() {
     printWindow.document.write(printHtml);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      // printWindow.close() is intentionally omitted — user may want to keep the preview
-    }, 500);
+    setTimeout(() => { printWindow.print(); }, 500);
   };
 
   if (isLoading) {
@@ -302,7 +209,6 @@ export default function LetterDetail() {
   const userVisibleActions = actions?.filter((a) => a.noteVisibility === "user_visible" && a.noteText);
   const isPolling = POLLING_STATUSES.includes(letter.status);
   const isGeneratedLocked = letter.status === "generated_locked";
-  const isGeneratedUnlocked = letter.status === "generated_unlocked";
 
   return (
     <AppLayout breadcrumb={[{ label: "My Letters", href: "/letters" }, { label: letter.subject }]}>
@@ -363,7 +269,32 @@ export default function LetterDetail() {
           </CardContent>
         </Card>
 
-        {/* ── PAYWALL: generated_locked ── */}
+        {/* ── In-progress: pipeline running ── */}
+        {["submitted", "researching", "drafting"].includes(letter.status) && (
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-700 rounded-full animate-spin" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">
+                    {letter.status === "submitted" && "Preparing your letter..."}
+                    {letter.status === "researching" && "Researching applicable laws and precedents..."}
+                    {letter.status === "drafting" && "Drafting your letter..."}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {letter.status === "submitted" && "Our team is reviewing your intake and starting research."}
+                    {letter.status === "researching" && "Our legal research team is analysing statutes, case law, and local ordinances relevant to your matter."}
+                    {letter.status === "drafting" && "Our team is drafting a professional letter based on the research findings."}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── PAYWALL: generated_locked — blurred draft + $200 CTA ── */}
         {isGeneratedLocked && (
           <LetterPaywall
             letterId={letterId}
@@ -373,11 +304,29 @@ export default function LetterDetail() {
           />
         )}
 
-        {/* ── FIRST-LETTER-FREE: generated_unlocked — full draft visible + Send for Review CTA ── */}
-        {isGeneratedUnlocked && <GeneratedUnlockedView letterId={letterId} draftContent={aiDraftVersion?.content ?? ""} />}
+        {/* ── Pending / Under Review ── */}
+        {["pending_review", "under_review"].includes(letter.status) && (
+          <Card className="border-amber-200 bg-amber-50/30">
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {letter.status === "pending_review" ? "In the Attorney Review Queue" : "Attorney is Reviewing Your Letter"}
+                  </p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    {letter.status === "pending_review"
+                      ? "Your letter is in the queue. A licensed attorney will pick it up shortly."
+                      : "A licensed attorney has claimed your letter and is currently reviewing and editing it. You'll be notified by email once it's approved."}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Attorney Notes (user-visible only) — shown for all non-locked statuses */}
-        {!isGeneratedLocked && !isGeneratedUnlocked && userVisibleActions && userVisibleActions.length > 0 && (
+        {/* Attorney Notes (user-visible only) */}
+        {!isGeneratedLocked && userVisibleActions && userVisibleActions.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -409,7 +358,7 @@ export default function LetterDetail() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-amber-700">
-                The reviewing attorney has requested changes. Please review the attorney notes above and provide additional context or corrections below. The AI pipeline will re-process your letter with this new information.
+                The reviewing attorney has requested changes. Please review the attorney notes above and provide additional context or corrections below. Our legal team will re-process your letter with this new information.
               </p>
               <Textarea
                 value={updateText}
