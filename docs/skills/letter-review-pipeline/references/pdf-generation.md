@@ -1,5 +1,7 @@
 # PDF Generation Reference
 
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+
 ## Table of Contents
 - [Overview](#overview)
 - [Generation Flow](#generation-flow)
