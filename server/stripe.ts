@@ -471,3 +471,71 @@ export async function createLetterUnlockCheckout(params: {
   if (!session.url) throw new Error("Stripe did not return a checkout URL");
   return { url: session.url, sessionId: session.id };
 }
+
+// ─── Attorney Review Upsell ────────────────────────────────────────────────────
+/** Price for the optional $100 attorney review upsell on free-trial letters */
+export const ATTORNEY_REVIEW_UPSELL_PRICE_CENTS = 10_000; // $100.00
+
+/**
+ * Creates a Stripe checkout session for the $100 attorney review upsell.
+ * Called when a subscriber with a free (generated_unlocked) letter chooses to
+ * submit it for attorney review.
+ *
+ * On payment success the webhook transitions:
+ *   generated_unlocked → pending_review  (unlock_type = "attorney_review_upsell")
+ */
+export async function createAttorneyReviewCheckout(params: {
+  userId: number;
+  email: string;
+  name?: string | null;
+  letterId: number;
+  origin: string;
+}): Promise<{ url: string; sessionId: string }> {
+  const { userId, email, name, letterId, origin } = params;
+  const stripe = getStripe();
+  const customerId = await getOrCreateStripeCustomer(userId, email, name);
+
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    client_reference_id: userId.toString(),
+    mode: "payment",
+    payment_method_types: ["card"],
+    allow_promotion_codes: false,
+    metadata: {
+      user_id: userId.toString(),
+      letter_id: letterId.toString(),
+      unlock_type: "attorney_review_upsell",
+      customer_email: email,
+      customer_name: name ?? "",
+    },
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Attorney Review — Talk to My Lawyer",
+            description:
+              "A licensed attorney will review, edit, and approve your AI-drafted letter.",
+            metadata: {
+              letter_id: letterId.toString(),
+              unlock_type: "attorney_review_upsell",
+            },
+          },
+          unit_amount: ATTORNEY_REVIEW_UPSELL_PRICE_CENTS,
+        },
+        quantity: 1,
+      },
+    ],
+    payment_intent_data: {
+      metadata: {
+        user_id: userId.toString(),
+        letter_id: letterId.toString(),
+        unlock_type: "attorney_review_upsell",
+      },
+    },
+    success_url: `${origin}/letters/${letterId}?review_submitted=true`,
+    cancel_url: `${origin}/letters/${letterId}?review_canceled=true`,
+  });
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  return { url: session.url, sessionId: session.id };
+}

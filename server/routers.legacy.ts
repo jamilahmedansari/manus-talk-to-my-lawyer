@@ -895,15 +895,25 @@ export const appRouter = router({
             letterId: input.letterId,
             appUrl: getAppUrl(ctx.req),
           });
-          await sendNewReviewNeededEmail({
-            to: "", // Will use admin email from config
-            name: "Attorney Team",
-            letterSubject: letter.subject,
-            letterId: input.letterId,
-            letterType: letter.letterType,
-            jurisdiction: letter.jurisdictionState ?? "Unknown",
-            appUrl: getAppUrl(ctx.req),
-          });
+          const reviewTeamEmail =
+            process.env.REVIEW_TEAM_EMAIL ??
+            process.env.ADMIN_REVIEW_EMAIL;
+          if (!reviewTeamEmail) {
+            console.error(
+              "[legacy.freeUnlock] Missing REVIEW_TEAM_EMAIL / ADMIN_REVIEW_EMAIL — " +
+              "review-queue notification NOT sent for letter #" + input.letterId
+            );
+          } else {
+            await sendNewReviewNeededEmail({
+              to: reviewTeamEmail,
+              name: "Review Team",
+              letterSubject: letter.subject,
+              letterId: input.letterId,
+              letterType: letter.letterType,
+              jurisdiction: letter.jurisdictionState ?? "Unknown",
+              appUrl: getAppUrl(ctx.req),
+            });
+          }
         } catch (e) { console.error("[freeUnlock] Email error:", e); }
 
         return { success: true, free: true };
