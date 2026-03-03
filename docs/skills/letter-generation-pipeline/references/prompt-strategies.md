@@ -1,5 +1,7 @@
 # Prompt Strategies Reference
 
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+
 ## Table of Contents
 - [Stage 1: Research Prompt](#stage-1-research-prompt)
 - [Stage 2: Drafting Prompt](#stage-2-drafting-prompt)

@@ -9,6 +9,8 @@ description: Comprehensive AI assistant instructions for Talk to My Lawyer platf
 > **Stack:** React 19 + Vite + TypeScript + tRPC + Drizzle ORM + Supabase + Stripe
 > **Architecture:** Full-stack monorepo with shared types
 
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+
 ## Quick Context Summary
 
 Talk to My Lawyer is a legal technology platform that:
@@ -83,7 +85,7 @@ const letters = await db
 ```
 
 ### 5. tRPC Procedure Template
-```typescript
+```typescript2
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { subscriberProcedure } from '@/server/routers/_guards'

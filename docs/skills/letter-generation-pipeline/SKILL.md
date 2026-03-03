@@ -7,6 +7,8 @@ description: Complete reference for the Talk to My Lawyer AI letter generation p
 
 The letter generation pipeline converts a subscriber's intake form submission into a polished, attorney-ready legal letter through three sequential AI stages. This skill documents every stage, data shape, status transition, and failure mode.
 
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+
 ## Pipeline Overview
 
 ```
