@@ -7,7 +7,7 @@ import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getDb, countCompletedLetters, getDiscountCodeByCode } from "./db";
 import { subscriptions } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { PLANS, getPlanConfig, LETTER_UNLOCK_PRICE_CENTS, MONTHLY_BASIC_PRICE_CENTS, MONTHLY_PRO_PRICE_CENTS } from "./stripe-products";
 
 /**
@@ -236,7 +236,7 @@ export async function getUserSubscription(userId: number) {
     .select()
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
-    .orderBy(subscriptions.createdAt)
+    .orderBy(desc(subscriptions.createdAt))
     .limit(1);
 
   return rows.length > 0 ? rows[0] : null;

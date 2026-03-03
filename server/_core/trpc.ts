@@ -2,6 +2,7 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { enforceProcedure, PROCEDURE_POLICY, type ProcedureKey } from "./procedurePolicy";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -43,3 +44,22 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+/**
+ * Policy-driven procedure factory.
+ * Looks up the procedure key in PROCEDURE_POLICY and auto-enforces auth + role.
+ *
+ * Usage:
+ *   submit: policyProcedure("letters.submit").input(...).mutation(...)
+ */
+export const policyProcedure = (key: ProcedureKey) => {
+  const p = PROCEDURE_POLICY[key];
+  const base = p.auth === "public" ? publicProcedure : protectedProcedure;
+
+  return base.use(
+    t.middleware(async (opts) => {
+      enforceProcedure(opts.ctx, key);
+      return opts.next();
+    }),
+  );
+};

@@ -75,7 +75,7 @@ export default function ProtectedRoute({
 
     // Gate: email must be verified before accessing the app
     // Admins are always pre-verified; skip gate for them
-    if (user.role !== "admin" && !(user as any).emailVerified) {
+    if (user.role !== "admin" && !user.emailVerified) {
       navigate("/verify-email");
       return;
     }
@@ -95,7 +95,7 @@ export default function ProtectedRoute({
   }
 
   // Block unverified users (non-admin)
-  if (user.role !== "admin" && !(user as any).emailVerified) {
+  if (user.role !== "admin" && !user.emailVerified) {
     return null;
   }
 

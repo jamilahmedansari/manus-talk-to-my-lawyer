@@ -7,7 +7,7 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getStripe, activateSubscription } from "./stripe";
-import { getPlanConfig } from "./stripe-products";
+import { getPlanConfig, DEFAULT_COMMISSION_RATE_BPS } from "./stripe-products";
 import {
   getDb, updateLetterStatus, logReviewAction, getLetterRequestById,
   getUserById, createNotification, getDiscountCodeByCode,
@@ -28,6 +28,70 @@ async function getUserIdFromStripeCustomer(customerId: string): Promise<number |
     return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Shared commission tracking logic for both payment and subscription checkouts.
+ * Handles discount code validation, commission creation, usage increment, and employee notification.
+ */
+async function trackCommission(params: {
+  session: Stripe.Checkout.Session;
+  userId: number;
+  planId: string;
+  letterRequestId?: number;
+  paymentIntentId?: string | null;
+}): Promise<void> {
+  const { session, userId, planId, letterRequestId, paymentIntentId } = params;
+  const discountCodeStr = session.metadata?.discount_code;
+  if (!discountCodeStr) return;
+
+  const metaEmployeeId = session.metadata?.employee_id ? parseInt(session.metadata.employee_id, 10) : null;
+  const metaDiscountCodeId = session.metadata?.discount_code_id ? parseInt(session.metadata.discount_code_id, 10) : null;
+  const discountCode = await getDiscountCodeByCode(discountCodeStr);
+  if (!discountCode || !discountCode.isActive) return;
+
+  await incrementDiscountCodeUsage(discountCode.id);
+  const saleAmount = session.amount_total ?? 0;
+  if (saleAmount <= 0) return;
+
+  const commissionRate = DEFAULT_COMMISSION_RATE_BPS;
+  const commissionAmount = Math.round(saleAmount * commissionRate / 10000);
+  await createCommission({
+    employeeId: metaEmployeeId ?? discountCode.employeeId,
+    letterRequestId,
+    subscriberId: userId,
+    discountCodeId: metaDiscountCodeId ?? discountCode.id,
+    stripePaymentIntentId: paymentIntentId ?? undefined,
+    saleAmount,
+    commissionRate,
+    commissionAmount,
+  });
+  console.log(`[StripeWebhook] Commission created: $${(commissionAmount / 100).toFixed(2)} for employee #${metaEmployeeId ?? discountCode.employeeId} (sale: $${(saleAmount / 100).toFixed(2)}, plan: ${planId})`);
+
+  // Notify employee of commission earned (non-blocking)
+  try {
+    const employee = await getUserById(discountCode.employeeId);
+    const subscriber = await getUserById(userId);
+    if (employee?.email) {
+      const planCfg = getPlanConfig(planId);
+      const appUrl = session.success_url?.split('/letters')[0]
+        ?? process.env.APP_BASE_URL ?? 'https://www.talk-to-my-lawyer.com';
+      await sendEmployeeCommissionEmail({
+        to: employee.email,
+        name: employee.name ?? "Employee",
+        subscriberName: subscriber?.name ?? "A subscriber",
+        planName: planCfg?.name ?? planId,
+        commissionAmount: `$${(commissionAmount / 100).toFixed(2)}`,
+        discountCode: discountCodeStr,
+        dashboardUrl: `${appUrl}/employee/dashboard`,
+      });
+    }
+  } catch (emailErr) {
+    console.error(`[StripeWebhook] Commission email error:`, emailErr);
+    captureServerException(emailErr instanceof Error ? emailErr : new Error(String(emailErr)), {
+      tags: { component: "stripe_webhook", error_type: "commission_email" },
+    });
   }
 }
 
@@ -141,61 +205,24 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                   console.log(`[StripeWebhook] Letter #${letterId} unlocked → pending_review`);
 
                   // ─── Commission tracking: if a discount code was used ───
-                  const discountCodeStr = session.metadata?.discount_code;
-                  if (discountCodeStr) {
-                    try {
-                      // Use enriched metadata when available, fall back to DB lookup
-                      const metaEmployeeId = session.metadata?.employee_id ? parseInt(session.metadata.employee_id, 10) : null;
-                      const metaDiscountCodeId = session.metadata?.discount_code_id ? parseInt(session.metadata.discount_code_id, 10) : null;
-                      const discountCode = await getDiscountCodeByCode(discountCodeStr);
-                      if (discountCode && discountCode.isActive) {
-                        await incrementDiscountCodeUsage(discountCode.id);
-                        const saleAmount = session.amount_total ?? 20000; // cents (final price after discount)
-                        const originalPrice = session.metadata?.original_price ? parseInt(session.metadata.original_price, 10) : saleAmount;
-                        const commissionRate = 500; // 5% = 500 basis points
-                        const commissionAmount = Math.round(saleAmount * commissionRate / 10000);
-                        await createCommission({
-                          employeeId: metaEmployeeId ?? discountCode.employeeId,
-                          letterRequestId: letterId,
-                          subscriberId: userId,
-                          discountCodeId: metaDiscountCodeId ?? discountCode.id,
-                          stripePaymentIntentId: paymentIntentId ?? undefined,
-                          saleAmount,
-                          commissionRate,
-                          commissionAmount,
-                        });
-                        console.log(`[StripeWebhook] Commission created: $${(commissionAmount / 100).toFixed(2)} for employee #${metaEmployeeId ?? discountCode.employeeId} (original: $${(originalPrice / 100).toFixed(2)}, final: $${(saleAmount / 100).toFixed(2)})`);
-                        // ─── Notify employee of commission earned ───
-                        try {
-                          const employee = await getUserById(discountCode.employeeId);
-                          const subscriber = await getUserById(userId);
-                          if (employee?.email) {
-                            const planCfg = getPlanConfig(planId);
-                            const appUrl = session.success_url?.split('/letters')[0]
-                              ?? process.env.APP_BASE_URL ?? 'https://www.talk-to-my-lawyer.com';
-                            await sendEmployeeCommissionEmail({
-                              to: employee.email,
-                              name: employee.name ?? "Employee",
-                              subscriberName: subscriber?.name ?? "A subscriber",
-                              planName: planCfg?.name ?? "Pay Per Letter",
-                              commissionAmount: `$${(commissionAmount / 100).toFixed(2)}`,
-                              discountCode: discountCodeStr,
-                              dashboardUrl: `${appUrl}/employee/dashboard`,
-                            });
-                          }
-                        } catch (emailErr) {
-                          console.error(`[StripeWebhook] Commission email error (per-letter):`, emailErr);
-                        }
-                      }
-                    } catch (commErr) {
-                      console.error(`[StripeWebhook] Commission tracking error:`, commErr);
-                    }
+                  try {
+                    await trackCommission({ session, userId, planId, letterRequestId: letterId, paymentIntentId });
+                  } catch (commErr) {
+                    console.error(`[StripeWebhook] Commission tracking error:`, commErr);
+                    captureServerException(commErr, {
+                      tags: { component: "stripe_webhook", error_type: "commission_tracking" },
+                      extra: { letterId, userId, discountCode: session.metadata?.discount_code },
+                    });
                   }
                 } else {
                   console.warn(`[StripeWebhook] Letter #${letterId} not in generated_locked (status: ${letter?.status})`);
                 }
               } catch (unlockErr) {
                 console.error(`[StripeWebhook] Failed to unlock letter #${letterId}:`, unlockErr);
+                captureServerException(unlockErr instanceof Error ? unlockErr : new Error(String(unlockErr)), {
+                  tags: { component: "stripe_webhook", error_type: "letter_unlock" },
+                  extra: { letterId },
+                });
               }
             }
           }
@@ -204,59 +231,17 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         // Commission tracking must happen here because discount_code is only
         // available in the checkout session metadata, not in the subscription object.
         if (session.mode === "subscription") {
-          const discountCodeStr = session.metadata?.discount_code;
-          if (discountCodeStr) {
-            try {
-              // Use enriched metadata when available, fall back to DB lookup
-              const metaEmployeeId = session.metadata?.employee_id ? parseInt(session.metadata.employee_id, 10) : null;
-              const metaDiscountCodeId = session.metadata?.discount_code_id ? parseInt(session.metadata.discount_code_id, 10) : null;
-              const discountCode = await getDiscountCodeByCode(discountCodeStr);
-              if (discountCode && discountCode.isActive) {
-                await incrementDiscountCodeUsage(discountCode.id);
-                const saleAmount = session.amount_total ?? 0;
-                const originalPrice = session.metadata?.original_price ? parseInt(session.metadata.original_price, 10) : saleAmount;
-                if (saleAmount > 0) {
-                  const commissionRate = 500; // 5% = 500 basis points
-                  const commissionAmount = Math.round(saleAmount * commissionRate / 10000);
-                  await createCommission({
-                    employeeId: metaEmployeeId ?? discountCode.employeeId,
-                    letterRequestId: undefined,
-                    subscriberId: userId,
-                    discountCodeId: metaDiscountCodeId ?? discountCode.id,
-                    stripePaymentIntentId: typeof session.payment_intent === "string"
-                      ? session.payment_intent
-                      : session.payment_intent?.id ?? undefined,
-                    saleAmount,
-                    commissionRate,
-                    commissionAmount,
-                  });
-                  console.log(`[StripeWebhook] Subscription commission: $${(commissionAmount / 100).toFixed(2)} for employee #${metaEmployeeId ?? discountCode.employeeId} (original: $${(originalPrice / 100).toFixed(2)}, final: $${(saleAmount / 100).toFixed(2)}, plan: ${planId})`);
-                  // ─── Notify employee of commission earned ───
-                  try {
-                    const employee = await getUserById(discountCode.employeeId);
-                    const subscriber = await getUserById(userId);
-                    if (employee?.email) {
-                      const planCfg = getPlanConfig(planId);
-                      const appUrl = session.success_url?.split('/letters')[0]
-                        ?? process.env.APP_BASE_URL ?? 'https://www.talk-to-my-lawyer.com';
-                      await sendEmployeeCommissionEmail({
-                        to: employee.email,
-                        name: employee.name ?? "Employee",
-                        subscriberName: subscriber?.name ?? "A subscriber",
-                        planName: planCfg?.name ?? planId,
-                        commissionAmount: `$${(commissionAmount / 100).toFixed(2)}`,
-                        discountCode: discountCodeStr,
-                        dashboardUrl: `${appUrl}/employee/dashboard`,
-                      });
-                    }
-                  } catch (emailErr) {
-                    console.error(`[StripeWebhook] Commission email error (subscription):`, emailErr);
-                  }
-                }
-              }
-            } catch (commErr) {
-              console.error(`[StripeWebhook] Subscription commission tracking error:`, commErr);
-            }
+          const subPaymentIntentId = typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : session.payment_intent?.id ?? undefined;
+          try {
+            await trackCommission({ session, userId, planId, paymentIntentId: subPaymentIntentId });
+          } catch (commErr) {
+            console.error(`[StripeWebhook] Subscription commission tracking error:`, commErr);
+            captureServerException(commErr, {
+              tags: { component: "stripe_webhook", error_type: "commission_tracking_subscription" },
+              extra: { userId, planId, discountCode: session.metadata?.discount_code },
+            });
           }
         }
         break;

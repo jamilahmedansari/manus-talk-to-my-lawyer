@@ -387,7 +387,7 @@ export async function runDraftingStage(letterId: number, intake: IntakeJson, res
   }
 }
 // ═══════════════════════════════════════════════════════
-// STAGE 3: CLAUDE FINAL LETTER ASSEMBLYY
+// STAGE 3: CLAUDE FINAL LETTER ASSEMBLY
 // ═══════════════════════════════════════════════════════
 
 export async function runAssemblyStage(

@@ -10,6 +10,7 @@ import { TRPCError } from "@trpc/server";
 import { checkTrpcRateLimit } from "../rateLimiter";
 import { router } from "../_core/trpc";
 import { subscriberProcedure, getAppUrl } from "./_guards";
+import { captureServerException } from "../sentry";
 import {
   createLetterRequest,
   createAttachment,
@@ -151,7 +152,10 @@ export const lettersRouter = router({
           letterType: input.letterType,
           jurisdictionState: input.jurisdictionState,
           appUrl,
-        }).catch((err) => console.error("[Email] Submission confirmation failed:", err));
+        }).catch((err) => {
+          console.error("[Email] Submission confirmation failed:", err);
+          captureServerException(err instanceof Error ? err : new Error(String(err)));
+        });
       }
 
       // Trigger AI pipeline in background (non-blocking)
@@ -180,6 +184,7 @@ export const lettersRouter = router({
           }
         } catch (notifyErr) {
           console.error("[Pipeline] Failed to notify admins:", notifyErr);
+          captureServerException(notifyErr instanceof Error ? notifyErr : new Error(String(notifyErr)));
         }
       });
 
@@ -275,6 +280,7 @@ export const lettersRouter = router({
             }
           } catch (notifyErr) {
             console.error("[Pipeline] Failed to notify admins:", notifyErr);
+          captureServerException(notifyErr instanceof Error ? notifyErr : new Error(String(notifyErr)));
           }
         });
       }

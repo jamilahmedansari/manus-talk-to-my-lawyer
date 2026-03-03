@@ -6,6 +6,7 @@
  *
  * Jobs registered:
  *   - Draft Reminder: every hour at :00 — calls processDraftReminders()
+ *   - Token Cleanup: daily at 03:00 UTC — deletes expired/used verification tokens
  *
  * The scheduler is only started in production (NODE_ENV !== 'test').
  * In test environments, jobs are not registered to avoid side effects.
@@ -17,6 +18,7 @@
 
 import cron from "node-cron";
 import { processDraftReminders } from "./draftReminders";
+import { deleteExpiredVerificationTokens } from "./db";
 
 /** Whether the scheduler has been started (prevents double-registration) */
 let started = false;
@@ -58,6 +60,20 @@ export function startCronScheduler(): void {
   });
 
   console.log("[Cron] Registered: draft-reminders (every hour at :00)");
+
+  // ── Token Cleanup: daily at 03:00 UTC ────────────────────────────────────
+  cron.schedule("0 3 * * *", async () => {
+    console.log(`[Cron] [${new Date().toISOString()}] Cleaning expired verification tokens...`);
+    try {
+      const deleted = await deleteExpiredVerificationTokens();
+      console.log(`[Cron] Token cleanup done — deleted: ${deleted}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Cron] Token cleanup failed: ${msg}`);
+    }
+  });
+
+  console.log("[Cron] Registered: token-cleanup (daily at 03:00 UTC)");
 }
 
 /**

@@ -36,6 +36,7 @@ import {
 } from "../email";
 import { retryPipelineFromStage } from "../pipeline";
 import { generateAndUploadApprovedPdf } from "../pdfGenerator";
+import { captureServerException } from "../sentry";
 
 export const reviewRouter = router({
   /**
@@ -126,6 +127,7 @@ export const reviewRouter = router({
         });
       } catch (err) {
         console.error("[Notify] Claim subscriber notification failed:", err);
+        captureServerException(err instanceof Error ? err : new Error(String(err)));
       }
 
       // Notify attorney (assignment confirmation)
@@ -151,6 +153,7 @@ export const reviewRouter = router({
         }
       } catch (err) {
         console.error("[Notify] Claim attorney notification failed:", err);
+        captureServerException(err instanceof Error ? err : new Error(String(err)));
       }
 
       return { success: true };
@@ -276,7 +279,10 @@ export const reviewRouter = router({
         console.log(`[Approve] PDF generated for letter #${input.letterId}: ${pdfUrl}`);
       } catch (pdfErr) {
         console.error(`[Approve] PDF generation failed for letter #${input.letterId}:`, pdfErr);
-        // Non-blocking: approval still succeeds even if PDF fails
+        captureServerException(pdfErr instanceof Error ? pdfErr : new Error(String(pdfErr)), {
+          tags: { component: "review", error_type: "pdf_generation" },
+          extra: { letterId: input.letterId },
+        });
       }
 
       // Notify subscriber
@@ -302,6 +308,7 @@ export const reviewRouter = router({
         });
       } catch (err) {
         console.error("[Notify] Approve notification failed:", err);
+        captureServerException(err instanceof Error ? err : new Error(String(err)));
       }
 
       return { success: true, versionId, pdfUrl };
@@ -374,6 +381,7 @@ export const reviewRouter = router({
         });
       } catch (err) {
         console.error("[Notify] Reject notification failed:", err);
+        captureServerException(err instanceof Error ? err : new Error(String(err)));
       }
 
       return { success: true };
@@ -442,6 +450,7 @@ export const reviewRouter = router({
         });
       } catch (err) {
         console.error("[Notify] RequestChanges notification failed:", err);
+        captureServerException(err instanceof Error ? err : new Error(String(err)));
       }
 
       // Optionally re-trigger pipeline from drafting stage

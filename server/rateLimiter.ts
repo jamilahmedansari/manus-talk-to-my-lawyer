@@ -15,6 +15,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "./_core/env";
+import { captureServerException } from "./sentry";
 
 // ─── Redis Client ─────────────────────────────────────────────────────────────
 
@@ -112,10 +113,15 @@ function getClientIp(req: Request): string {
 async function checkLimit(
   limiter: Ratelimit | null,
   identifier: string,
-  res: Response
+  res: Response,
+  { failClosed = false }: { failClosed?: boolean } = {},
 ): Promise<boolean> {
   if (!limiter) {
-    // Redis not configured — allow all requests (graceful degradation)
+    if (failClosed) {
+      captureServerException(new Error("[RateLimit] Redis unavailable on fail-closed endpoint"));
+      res.status(503).json({ error: "Service temporarily unavailable. Please try again later." });
+      return false;
+    }
     return true;
   }
   try {
@@ -134,7 +140,11 @@ async function checkLimit(
     }
     return true;
   } catch (err) {
-    // Redis error — allow request to proceed (fail open)
+    captureServerException(err instanceof Error ? err : new Error(String(err)));
+    if (failClosed) {
+      res.status(503).json({ error: "Service temporarily unavailable. Please try again later." });
+      return false;
+    }
     console.warn("[RateLimit] Redis error, allowing request:", err);
     return true;
   }
@@ -152,9 +162,11 @@ export function authRateLimitMiddleware(
   next: NextFunction
 ): void {
   const ip = getClientIp(req);
-  checkLimit(getAuthLimiter(), ip, res).then((allowed) => {
+  checkLimit(getAuthLimiter(), ip, res, { failClosed: true }).then((allowed) => {
     if (allowed) next();
-  }).catch(() => next());
+  }).catch(() => {
+    res.status(503).json({ error: "Service temporarily unavailable. Please try again later." });
+  });
 }
 
 /**

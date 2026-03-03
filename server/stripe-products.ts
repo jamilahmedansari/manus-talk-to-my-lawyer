@@ -25,6 +25,9 @@ export interface PlanConfig {
   features: string[];
 }
 
+/** Default affiliate commission rate in basis points (5% = 500 bps) */
+export const DEFAULT_COMMISSION_RATE_BPS = 500;
+
 /** Price in cents for a single pay-per-letter unlock ($200) */
 export const LETTER_UNLOCK_PRICE_CENTS = 20000; // $200
 

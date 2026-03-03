@@ -10,7 +10,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ChevronRight, ChevronLeft, CheckCircle, FileText, MapPin, Users, AlignLeft, Target, Paperclip, Upload, X, File as FileIcon } from "lucide-react";
-import { LETTER_TYPE_CONFIG, US_STATES } from "../../../../shared/types";
+import { LETTER_TYPE_CONFIG, US_STATES, type LetterType } from "../../../../shared/types";
 import { AlertCircle, Scale } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import PipelineProgressModal from "@/components/PipelineProgressModal";
@@ -152,7 +152,9 @@ export default function SubmitLetter() {
     if (form.letterType || form.subject || form.description) {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({ form, step, savedAt: Date.now() }));
-      } catch { /* storage full — ignore */ }
+      } catch {
+        toast.warning("Could not save draft", { description: "Storage may be full. Your progress will not be saved if you leave the page." });
+      }
     }
   }, [form, step]);
 
@@ -253,20 +255,29 @@ export default function SubmitLetter() {
         },
       };
       const result = await submit.mutateAsync({
-        letterType: form.letterType as any,
+        letterType: form.letterType as LetterType,
         subject: form.subject,
         jurisdictionState: form.jurisdictionState,
         jurisdictionCity: form.jurisdictionCity || undefined,
         intakeJson,
       });
       const letterId = result.letterId;
-      // Upload attachments in parallel (non-blocking failures)
+      // Upload attachments in parallel
       if (pendingFiles.length > 0) {
-        await Promise.allSettled(
-          pendingFiles.filter((f) => f.status === "ready").map((f) =>
+        const readyFiles = pendingFiles.filter((f) => f.status === "ready");
+        const results = await Promise.allSettled(
+          readyFiles.map((f) =>
             uploadAttachment.mutateAsync({ letterId, fileName: f.name, mimeType: f.mimeType, base64Data: f.base64 })
           )
         );
+        const failedNames = results
+          .map((r, i) => r.status === "rejected" ? readyFiles[i].name : null)
+          .filter(Boolean);
+        if (failedNames.length > 0) {
+          toast.error("Some attachments failed to upload", {
+            description: `Failed: ${failedNames.join(", ")}. Your letter was still submitted.`,
+          });
+        }
       }
       // Clear saved draft on successful submission
       localStorage.removeItem(DRAFT_KEY);
