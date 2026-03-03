@@ -251,3 +251,13 @@ Source: `drizzle/schema.ts` → `workflowJobs` table
   createdAt: timestamp;
 }
 ```
+
+---
+
+## Agent Init (Required)
+
+For any agent task using these data shapes, load the active frontend issue register (`agentId: a28925291b7edfefb`) before implementation.
+
+- First-pass priorities: type-safe interfaces (remove unsafe casts), verified-email contract typing across backend/frontend, and explicit upload/localStorage failure handling.
+- Follow-up priorities: auth effect races, debounce-heavy draft persistence, suspense error boundaries, and status/polling consistency.
+- Quality pass: accessibility, pagination, optimistic updates, config-driven assets, and production-safe logging.

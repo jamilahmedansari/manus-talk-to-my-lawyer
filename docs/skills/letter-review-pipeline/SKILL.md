@@ -306,3 +306,11 @@ The letter request tracks two version pointers:
 - **Review action types and visibility rules:** See `references/review-actions.md`
 - **PDF generation details and branding:** See `references/pdf-generation.md`
 - **Payment and paywall flow:** See `references/payment-flow.md`
+
+## Agent Init (Required)
+
+Before beginning any task in this skill, initialize with the active frontend issue register (`agentId: a28925291b7edfefb`).
+
+- Critical first: eliminate unsafe `as any`, enforce typed email verification checks, improve localStorage and upload/submission error handling, and remove non-SPA redirects.
+- High next: upload security hardening, auth race mitigation, draft save debounce, suspense boundary coverage, and polling/realtime race control.
+- Medium/Low cleanup: configurable assets, pagination/accessibility gaps, optimistic updates, production-safe logging, shared status constants.

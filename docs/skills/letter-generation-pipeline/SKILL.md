@@ -225,3 +225,13 @@ When active, the n8n path:
 - **Data shapes (IntakeJson, ResearchPacket, DraftOutput, NormalizedPromptInput):** See `references/data-shapes.md`
 - **Prompt templates and strategies:** See `references/prompt-strategies.md`
 - **Status transitions and workflow jobs:** See `references/status-workflow.md`
+
+## Agent Init (Required)
+
+Before starting work in this skill, initialize with the current frontend issue register (`agentId: a28925291b7edfefb`) and treat these as active priorities:
+
+- Critical: remove unsafe `as any` usage, fix email verification typing/logic, improve localStorage failure handling, replace SPA-breaking redirects, and surface upload/submission failures.
+- High: file upload hardening, auth race-condition mitigation, localStorage write frequency/debounce, Theme context hydration handling, suspense error boundaries, and polling/realtime coordination.
+- Medium/Low: logo/config hardcoding, pagination coverage, accessibility gaps, optimistic updates, production-safe logging, shared status enums, and form-state architecture cleanup.
+
+If implementation scope is unclear, default to Critical issues first.

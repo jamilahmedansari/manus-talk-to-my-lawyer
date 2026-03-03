@@ -174,3 +174,13 @@ When a subscriber uses a discount code at checkout:
 - `discount_codes` — code, employeeId, discountPercent, usageCount, maxUses, isActive
 - `commission_ledger` — employeeId, transactionId, amount, status (pending/paid)
 - `payout_requests` — employeeId, amount, status (pending/completed/rejected), paymentMethod
+
+---
+
+## Agent Init (Required)
+
+Before implementation, initialize from the active issue register (`agentId: a28925291b7edfefb`).
+
+- Prioritize critical correctness: typed auth/email verification, removal of unsafe casts, and explicit upload/submission/localStorage error handling.
+- Keep navigation SPA-safe (no direct full reload redirects unless explicitly required).
+- Plan follow-up for pagination, accessibility, and optimistic mutation UX.

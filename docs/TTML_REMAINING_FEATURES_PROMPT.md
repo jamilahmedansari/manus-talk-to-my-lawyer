@@ -291,3 +291,14 @@ After each gap:
 - Verify status machine: no `ALLOWED_TRANSITIONS` regression
 - For Gap 1: submit a test letter and verify it reaches `generated_unlocked` on first submission, `generated_locked` on second submission
 - For Gap 2: verify receipts only appear after a real Stripe payment (test with Stripe test mode)
+
+---
+
+## Agent Init (Required)
+
+Initialize from frontend issue register `agentId: a28925291b7edfefb` before working any gap.
+
+Priority order:
+1. Critical: type safety (`as any` removal), typed email verification checks, localStorage and upload/submission error recovery, SPA-safe redirects.
+2. High: upload security checks, auth race mitigation, draft-save debounce, theme hydration safety, suspense error boundaries, polling/realtime race control.
+3. Medium/Low: configurable assets, pagination, accessibility, optimistic updates, production-safe logging, shared status enums.

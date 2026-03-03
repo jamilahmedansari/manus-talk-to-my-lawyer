@@ -131,3 +131,13 @@ queued ──→ running ──→ completed
 - `admin.failedJobs` → lists all failed jobs (limit 100)
 - `admin.letterJobs` → lists all jobs for a specific letter
 - `admin.purgeFailedJobs` → deletes all failed job records
+
+---
+
+## Agent Init (Required)
+
+Initialize from the active issue register (`agentId: a28925291b7edfefb`) and prioritize critical frontend correctness before workflow enhancements:
+
+- Type-safety + verified-email route guard correctness.
+- Upload/localStorage error resilience and SPA-safe redirects.
+- Then address polling/realtime race conditions and shared status constant usage.
