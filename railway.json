@@ -1,20 +1,24 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "RAILPACK"
+    "builder": "RAILPACK",
+    "buildCommand": "npm run build"
   },
   "deploy": {
+    "startCommand": "node dist/index.js",
     "runtime": "V2",
     "numReplicas": 1,
-    "cronSchedule": "0 * * * *",
     "sleepApplication": false,
     "useLegacyStacker": false,
     "ipv6EgressEnabled": false,
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
     "multiRegionConfig": {
       "us-west2": {
         "numReplicas": 1
       }
     },
-    "restartPolicyType": "NEVER"
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
   }
 }
