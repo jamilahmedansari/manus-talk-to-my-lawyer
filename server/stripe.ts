@@ -493,28 +493,21 @@ export const ATTORNEY_REVIEW_UPSELL_PRICE_CENTS = 10_000; // $100.00
  * On payment success the webhook transitions:
  *   generated_unlocked → pending_review  (unlock_type = "attorney_review_upsell")
  */
-export async function createAttorneyReviewCheckout(params: {
+export async function export async function createAttorneyReviewCheckout(params: {
   userId: number;
   email: string;
-  name?: string | null;
+  name: string | null;
   letterId: number;
   origin: string;
 }): Promise<{ url: string; sessionId: string }> {
   const { userId, email, name, letterId, origin } = params;
-  const stripe = getStripe();
-  const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
   const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    client_reference_id: userId.toString(),
-    mode: "payment",
     payment_method_types: ["card"],
-    allow_promotion_codes: false,
+    mode: "payment",
+    customer_email: email,
     metadata: {
       user_id: userId.toString(),
-      plan_id: "per_letter",
-      letter_id: letterId.toString(),
-      unlock_type: "attorney_review_upsell",
       letter_id: letterId.toString(),
       unlock_type: "attorney_review_upsell",
       // plan_id is read by the webhook's activateSubscription call.
@@ -529,16 +522,11 @@ export async function createAttorneyReviewCheckout(params: {
         price_data: {
           currency: "usd",
           product_data: {
-            name: "Attorney Review — Optional Upgrade",
-            description: "Have a licensed attorney review, edit, and approve your letter. Receive a final approved PDF.",
-            metadata: { plan_id: "per_letter", letter_id: letterId.toString() },
-          },
-          unit_amount: ATTORNEY_REVIEW_UPSELL_PRICE_CENTS, // $100
             name: "Attorney Review — Talk to My Lawyer",
-            description:
-              "A licensed attorney will review, edit, and approve your AI-drafted letter.",
+            description: "A licensed attorney will review, edit, and approve your AI-drafted letter.",
             metadata: {
               letter_id: letterId.toString(),
+              plan_id: "attorney_review_upsell",
               unlock_type: "attorney_review_upsell",
             },
           },
@@ -550,15 +538,15 @@ export async function createAttorneyReviewCheckout(params: {
     payment_intent_data: {
       metadata: {
         user_id: userId.toString(),
-        plan_id: "per_letter",
+        plan_id: "attorney_review_upsell",
         letter_id: letterId.toString(),
         unlock_type: "attorney_review_upsell",
       },
     },
     success_url: `${origin}/letters/${letterId}?review_submitted=true`,
-    cancel_url: `${origin}/letters/${letterId}`,
     cancel_url: `${origin}/letters/${letterId}?review_canceled=true`,
   });
+
   if (!session.url) throw new Error("Stripe did not return a checkout URL");
   return { url: session.url, sessionId: session.id };
 }
