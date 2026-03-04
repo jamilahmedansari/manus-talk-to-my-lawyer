@@ -7,6 +7,7 @@
  * This ensures Sentry can properly instrument Express, HTTP, and other modules.
  */
 
+import "dotenv/config";
 import * as Sentry from "@sentry/node";
 
 const dsn = process.env.SENTRY_DSN;
