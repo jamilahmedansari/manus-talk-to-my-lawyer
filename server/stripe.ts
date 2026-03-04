@@ -483,7 +483,6 @@ export async function createLetterUnlockCheckout(params: {
  * the letter to pending_review after payment.
 // ─── Attorney Review Upsell ────────────────────────────────────────────────────
 /** Price for the optional $100 attorney review upsell on free-trial letters */
-export const ATTORNEY_REVIEW_UPSELL_PRICE_CENTS = 10_000; // $100.00
 
 /**
  * Creates a Stripe checkout session for the $100 attorney review upsell.

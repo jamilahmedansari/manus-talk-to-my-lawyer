@@ -135,9 +135,9 @@ submitted → researching → drafting → generated_locked
                                                               researching | drafting
 ```
 
-**Legacy statuses** (still in schema enum, deprecated):
-- `generated_unlocked` — First-letter free path (deprecated in Phase 69)
-- `upsell_dismissed` — Free copy kept (deprecated in Phase 69)
+**Special Free Trial Statuses**: 
+- `generated_unlocked` — First-letter free path 
+- `upsell_dismissed` — Free copy kept 
 
 ---
 
@@ -152,7 +152,7 @@ submitted → researching → drafting → generated_locked
 ```
 
 **Stripe Products:**
-- Per-letter: $29 (was $200, check current pricing in `server/stripe.ts`)
+- Per-letter: $200 (Note: See `shared/pricing.ts` and `server/stripe-products.ts` for canonical source of truth)
 - Monthly: $79/mo
 - Annual: $599/yr
 
@@ -342,3 +342,7 @@ client/src/
 6. **Sanitize user input** before using in prompts
 7. **Never log sensitive data** (full intake, API keys)
 8. Row-Level Security (RLS) enabled on all tables in Supabase
+
+## Pricing & Status Machine Source of Truth
+- **Pricing**: The canonical source of truth for all pricing amounts and plans is `shared/pricing.ts` and `server/stripe-products.ts`.
+- **Status Machine**: The canonical source of truth for letter status logic is `shared/const.ts` (if applicable) and the DB enum in `drizzle/schema.ts`.

@@ -112,7 +112,7 @@ Submit intake form → AI Pipeline (3 stages) → Letter ready (generated_locked
 
 ### 2. Payment & Review
 ```
-Pay $29 → Stripe webhook → pending_review → Attorney review → Approve → PDF sent
+Pay $200 → Stripe webhook → pending_review → Attorney review → Approve → PDF sent
 ```
 
 ### 3. Subscription
