@@ -1,191 +1,384 @@
-# manus-talk-to-my-lawyer Development Patterns
+# GitHub Copilot Instructions — Talk to My Lawyer
 
-> Auto-generated skill from repository analysis
+> **Project:** Talk to My Lawyer — AI-powered legal letter generation platform
+> **Tech Stack:** React 19 + Vite + TypeScript | Express + tRPC | PostgreSQL + Drizzle | Supabase Auth | Stripe
 
-## Overview
-
-This skill teaches development patterns for manus-talk-to-my-lawyer, a TypeScript/Vite-based legal technology platform. The codebase follows a phase-based development approach with comprehensive testing, structured database migrations, and integrated payment processing. The application appears to be a full-stack platform supporting multiple user roles (subscribers, employees, attorneys, admins) with email notifications, Stripe payments, and tRPC API architecture.
-
-## Coding Conventions
+## Code Style & Conventions
 
 ### File Naming
-- Use **camelCase** for all file names
-- Test files follow pattern: `*.test.*`
-- Phase-based test files: `phase*.test.ts`
-- Database migrations: `drizzle/####_*.sql`
+- Use **camelCase** for all TypeScript files: `letters.ts`, `intake-normalizer.ts`, `pdfGenerator.ts`
+- Test files: `*.test.ts` or `phase*.test.ts`
+- Component files: `PascalCase.tsx` for React components
+- Database migrations: `drizzle/####_description.sql`
 
-### Import/Export Style
+### Import Style
 ```typescript
-// Use alias imports
+// ✅ PREFERRED — Use alias imports
 import { something } from '@/shared/types'
 import { db } from '@/server/db'
+import { MyComponent } from '@/components/MyComponent'
 
-// Mixed export style - both named and default exports
+// ❌ AVOID — Relative imports when alias available
+import { something } from '../../../shared/types'
+```
+
+### Export Style
+```typescript
+// Both named and default exports are acceptable
 export const namedFunction = () => {}
 export default ComponentName
 ```
 
 ### Commit Messages
-- Average length: ~271 characters
-- Common prefixes: `checkpoint`, `docs`
-- Phase commits: `Phase X:` or `Checkpoint: Phase X:`
-- Freeform descriptive style
+```bash
+# Format: prefix: detailed description
+# Include test counts and TypeScript check status
 
-## Workflows
+feat: add Stripe payment integration for letter unlock
+- Implemented billing.payToUnlock procedure
+- Added webhook handler for checkout.session.completed
+- 320/320 tests passing
+- 0 TypeScript errors
 
-### Phase Checkpoint Commit
-**Trigger:** When finishing a major feature or improvement phase
-**Command:** `/complete-phase`
+# Phase checkpoints:
+Checkpoint: Phase 85: Sentry Alert Rules Configuration
+- Implemented alert rules for pipeline failures
+- 321/321 tests passing
+- 0 TypeScript errors
+```
 
-1. Implement feature changes across multiple implementation files
-2. Add comprehensive test coverage in `server/phase*.test.ts`
-3. Run tests and validate all pass (document XXX/XXX tests passing)
-4. Confirm 0 TypeScript errors with `tsc --noEmit`
-5. Create checkpoint commit with descriptive message:
-   ```
-   Checkpoint: Phase X: [Feature description and testing summary]
-   
-   - Implemented [specific changes]
-   - Added tests covering [test scenarios]  
-   - XXX/XXX tests passing
-   - 0 TypeScript errors
-   ```
-6. Update `todo.md` with completed phase progress
+## Type Safety Rules
 
-### Database Schema Migration
-**Trigger:** When adding new database fields or tables
-**Command:** `/add-db-column`
+```typescript
+// ❌ AVOID — Unsafe casts
+const data = someValue as any
+const result = response as unknown as MyType
 
-1. Update `drizzle/schema.ts` with new schema definitions:
-   ```typescript
-   export const newTable = pgTable('new_table', {
-     id: serial('id').primaryKey(),
-     newColumn: text('new_column').notNull(),
-     createdAt: timestamp('created_at').defaultNow(),
-   });
-   ```
-2. Generate migration SQL file: `drizzle/####_description.sql`
-3. Update migration metadata in `drizzle/meta/*.json`
-4. Update `drizzle/meta/_journal.json` with new migration entry
-5. Apply migration to Supabase database (via MCP or direct SQL execution)
-6. Update `server/db.ts` with new query functions if needed:
-   ```typescript
-   export const getNewTableData = async (id: number) => {
-     return await db.select().from(newTable).where(eq(newTable.id, id));
-   };
-   ```
+// ✅ PREFERRED — Type guards and validation
+function isMyType(val: unknown): val is MyType {
+  return typeof val === 'object' && val !== null && 'key' in val
+}
+if (isMyType(someValue)) { /* safe to use */ }
 
-### Email Template Integration
-**Trigger:** When adding new email notifications to the system
-**Command:** `/add-email-template`
+// Use Zod for runtime validation
+const schema = z.object({ field: z.string() })
+const validated = schema.parse(rawInput)
+```
 
-1. Add email template function to `server/email.ts`:
-   ```typescript
-   export const sendNewNotificationEmail = async (
-     to: string,
-     data: { name: string; details: string }
-   ) => {
-     // Branded email template implementation
-   };
-   ```
-2. Wire email sending into relevant tRPC procedures in `server/routers.ts`:
-   ```typescript
-   .mutation(async ({ input, ctx }) => {
-     const result = await someDbOperation(input);
-     
-     // Fire-and-forget email sending
-     sendNewNotificationEmail(input.email, result).catch(console.error);
-     
-     return result;
-   })
-   ```
-3. Add email template tests in `server/phase*.test.ts`
-4. Update `todo.md` with email integration status
-5. Ensure fire-and-forget error handling (errors caught and logged, don't block main flow)
+## Database Queries (Drizzle ORM)
 
-### Frontend Page Updates
-**Trigger:** When implementing frontend features that span multiple pages
-**Command:** `/update-frontend-pages`
+```typescript
+// ✅ PREFERRED — Use Drizzle ORM with proper types
+import { letterRequests, users } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-1. Update relevant page components in `client/src/pages/`:
-   ```typescript
-   // Ensure proper role-based rendering
-   if (user?.role === 'attorney') {
-     return <AttorneyView />;
-   }
-   ```
-2. Modify shared components if needed in `client/src/components/`
-3. Update routing in `client/src/App.tsx` if adding new routes
-4. Ensure responsive design and mobile compatibility
-5. Test across all user roles: subscriber, employee, attorney, admin
-6. Verify navigation and permissions work correctly
+const letters = await db
+  .select()
+  .from(letterRequests)
+  .where(eq(letterRequests.userId, userId))
 
-### Stripe Payment Integration
-**Trigger:** When adding new payment flows or modifying pricing
-**Command:** `/update-stripe-integration`
+// ❌ AVOID — Raw SQL queries
+const result = await db.run(`SELECT * FROM letter_requests WHERE user_id = ?`, [userId])
+```
 
-1. Update `server/stripe.ts` with new checkout logic:
-   ```typescript
-   export const createCheckoutSession = async (priceId: string) => {
-     return stripe.checkout.sessions.create({
-       // Checkout configuration
-     });
-   };
-   ```
-2. Modify `server/stripeWebhook.ts` for webhook handling:
-   ```typescript
-   case 'checkout.session.completed':
-     await handleCheckoutCompleted(event.data.object);
-     break;
-   ```
-3. Update `shared/pricing.ts` with new pricing constants
-4. Update frontend payment pages (`Pricing.tsx`, `Billing.tsx`, etc.)
-5. Add commission tracking in `server/db.ts` if needed
-6. Test payment flows end-to-end in Stripe test mode
+## tRPC Procedures
 
-### Documentation Update
-**Trigger:** When documenting architecture, features, or development processes
-**Command:** `/update-docs`
+```typescript
+// ✅ Standard pattern with role guards and validation
+import { z } from 'zod'
+import { subscriberProcedure } from '@/server/routers/_guards'
 
-1. Create or update markdown files in `docs/` or root directory
-2. Update `README.md` with project overview and setup instructions
-3. Document system architecture in `ARCHITECTURE.md`
-4. Update `todo.md` with current progress and next steps
-5. Ensure documentation reflects current codebase state and deployment process
-6. Include code examples and configuration details
+export const myProcedure = subscriberProcedure
+  .input(z.object({
+    letterId: z.number(),
+    content: z.string().min(50)
+  }))
+  .mutation(async ({ input, ctx }) => {
+    // ctx.user is typed and verified
+    const letter = await getLetterRequestById(input.letterId)
 
-### tRPC Procedure Addition
-**Trigger:** When adding new API endpoints for frontend consumption
-**Command:** `/add-trpc-procedure`
+    // Verify ownership
+    if (letter.userId !== ctx.user.id) {
+      throw new TRPCError({ code: 'FORBIDDEN' })
+    }
 
-1. Add procedure definition to `server/routers.ts` or modular router files:
-   ```typescript
-   newProcedure: publicProcedure
-     .input(z.object({
-       field: z.string(),
-     }))
-     .query(async ({ input, ctx }) => {
-       return await getSomeData(input.field);
-     }),
-   ```
-2. Add input validation with Zod schemas for type safety
-3. Implement database queries in `server/db.ts` if needed
-4. Add comprehensive tests in `server/phase*.test.ts`:
-   ```typescript
-   test('newProcedure returns expected data', async () => {
-     const result = await caller.newProcedure({ field: 'test' });
-     expect(result).toMatchObject({ /* expected shape */ });
-   });
-   ```
-5. Wire frontend calls to new procedures using tRPC hooks
-6. Ensure proper role-based access control with middleware
+    return { success: true }
+  })
+```
+
+## Role-Based Access Control
+
+```typescript
+// Use appropriate procedure guards:
+import { publicProcedure, protectedProcedure, subscriberProcedure, attorneyProcedure, adminProcedure } from '@/server/routers/_guards'
+
+// publicProcedure — No auth required (e.g., login, signup)
+// protectedProcedure — Any authenticated user
+// subscriberProcedure — Subscriber role only
+// attorneyProcedure — Attorney or Admin roles
+// adminProcedure — Admin role only
+```
+
+## Error Handling
+
+```typescript
+// ✅ Fire-and-forget for non-blocking operations
+sendEmail(to, data).catch(err => console.error('[Email] Failed:', err))
+
+// ✅ Explicit error visibility for user-facing operations
+try {
+  await uploadAttachment(file)
+} catch (err) {
+  setShowError(true)
+  setErrorMessage(err instanceof Error ? err.message : 'Upload failed')
+}
+
+// ✅ Use TRPCError for API errors
+import { TRPCError } from '@trpc/server'
+throw new TRPCError({
+  code: 'NOT_FOUND',
+  message: 'Letter not found'
+})
+```
+
+## Letter Generation Pipeline
+
+The platform uses a **3-stage AI pipeline** for letter generation:
+
+```
+Stage 1: Perplexity (sonar-pro) → Legal Research (90s timeout)
+  Input: IntakeJson → Output: ResearchPacket JSON
+
+Stage 2: Anthropic Claude (claude-opus-4-5) → Initial Draft (120s timeout)
+  Input: IntakeJson + ResearchPacket → Output: DraftOutput JSON
+
+Stage 3: Anthropic Claude (claude-opus-4-5) → Final Assembly (120s timeout)
+  Input: IntakeJson + ResearchPacket + DraftOutput → Output: Final Letter Text
+```
+
+### Status Machine
+
+```
+submitted → researching → drafting → generated_locked
+                               ↘
+                                generated_unlocked → pending_review | upsell_dismissed
+generated_locked → pending_review → under_review → approved | rejected | needs_changes
+needs_changes → researching | drafting
+```
+
+### Key Pipeline Files
+
+- `server/pipeline.ts` — Orchestrator + prompt builders
+- `server/intake-normalizer.ts` — Intake normalization
+- `server/routers/letters.ts` — Submit procedure (triggers pipeline)
+
+## Review Workflow
+
+Attorneys review letters through these operations:
+
+```typescript
+// 1. Claim letter for review
+review.claim({ letterId: number })
+  → pending_review → under_review
+  → Assigns to attorney, notifies subscriber
+
+// 2. Save attorney edit (no status change)
+review.saveEdit({ letterId, content, note? })
+  → Creates attorney_edit version
+
+// 3. Approve letter
+review.approve({ letterId, finalContent, internalNote?, userVisibleNote? })
+  → under_review → approved
+  → Generates PDF, sends email
+
+// 4. Reject letter
+review.reject({ letterId, reason, userVisibleReason? })
+  → under_review → rejected
+
+// 5. Request changes
+review.requestChanges({ letterId, internalNote?, userVisibleNote, retriggerPipeline? })
+  → under_review → needs_changes
+```
+
+## Payment Processing
+
+```typescript
+// Free unlock (first letter only)
+billing.freeUnlock({ letterId })
+  → Check for prior unlocks
+  → generated_locked → pending_review
+
+// Pay-per-letter ($200)
+billing.payToUnlock({ letterId, discountCode? })
+  → Create Stripe checkout
+  → Webhook handles completion
+
+// Check paywall status
+billing.checkPaywallStatus()
+  → Returns: { state: 'free' | 'subscribed' | 'pay_per_letter' }
+```
+
+## Email Templates
+
+```typescript
+// All email functions in server/email.ts
+import {
+  sendLetterSubmissionEmail,
+  sendLetterReadyEmail,
+  sendLetterApprovedEmail,
+  sendLetterRejectedEmail,
+  sendNeedsChangesEmail
+} from '@/server/email'
+
+// Fire-and-forget pattern
+sendEmail(to, data).catch(err => console.error('[Email] Failed:', err))
+```
+
+## Frontend Patterns
+
+### Component Structure
+```typescript
+// ✅ Use role-based page organization
+client/src/pages/
+  ├── public/          (no auth required)
+  ├── subscriber/      (subscriberProcedure)
+  ├── attorney/        (attorneyProcedure)
+  └── admin/           (adminProcedure)
+```
+
+### Route Guards
+```typescript
+// ✅ Use ProtectedRoute for role-based access
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+
+<Route path="/attorney/queue" element={
+  <ProtectedRoute allowedRoles={['attorney', 'admin']}>
+    <ReviewQueue />
+  </ProtectedRoute>
+} />
+```
+
+### tRPC Hooks
+```typescript
+// ✅ Use tRPC hooks for data fetching
+import { trpc } from '@/lib/trpc'
+
+const { data: letters } = trpc.letters.myLetters.useQuery()
+const mutateSubmit = trpc.letters.submit.useMutation()
+
+// ✅ Use optimistic updates for better UX
+const utils = trpc.useContext()
+mutateSubmit.mutate(input, {
+  onSuccess: () => {
+    utils.letters.myLetters.invalidate()
+  }
+})
+```
+
+## Testing Patterns
+
+```typescript
+// ✅ Phase-based test organization
+// server/phase85.test.ts
+
+import { describe, it, expect } from 'vitest'
+
+describe('Phase 85: Sentry Alert Rules', () => {
+  it('should create alert on pipeline failure', async () => {
+    const result = await handlePipelineFailure(letterId)
+    expect(result.alertCreated).toBe(true)
+  })
+})
+```
+
+## Environment Variables
+
+When creating code that needs environment variables:
+
+```typescript
+// ✅ Check for required environment variables
+const apiKey = process.env.ANTHROPIC_API_KEY
+if (!apiKey || apiKey.trim().length === 0) {
+  throw new Error('ANTHROPIC_API_KEY is not set')
+}
+```
+
+Required variables:
+- `ANTHROPIC_API_KEY` — Claude API
+- `PERPLEXITY_API_KEY` — Research API
+- `STRIPE_SECRET_KEY` — Payments
+- `SUPABASE_DATABASE_URL` — Database
+- `RESEND_API_KEY` — Email
+
+## Common Patterns
+
+### Database Transaction
+```typescript
+import { db } from '@/server/db'
+
+async function createLetterWithVersion(data: any) {
+  const letter = await db.insert(letterRequests).values(data).returning()
+  await db.insert(letterVersions).values({
+    letterRequestId: letter.id,
+    // ...
+  })
+  return letter
+}
+```
+
+### Status Transition
+```typescript
+import { ALLOWED_TRANSITIONS } from '@/shared/types'
+
+function canTransition(from: string, to: string): boolean {
+  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false
+}
+
+// Admin override available
+await updateLetterStatus(letterId, newStatus) // No check for admin
+```
+
+### PDF Generation
+```typescript
+import { generateAndUploadApprovedPdf } from '@/server/pdfGenerator'
+
+const { pdfUrl, pdfKey } = await generateAndUploadApprovedPdf({
+  letterId, letterType, subject, content,
+  approvedBy, approvedAt, jurisdictionState, jurisdictionCountry, intakeJson
+})
+```
+
+## Security Best Practices
+
+1. **Never expose AI drafts to subscribers** until payment complete
+2. **Never show internal review notes** to subscribers
+3. **Always verify email** before allowing protected actions
+4. **Use role guards** on all protected procedures
+5. **Validate input** with Zod schemas
+6. **Sanitize user input** before using in prompts
+7. **Never log sensitive data** (full intake, API keys)
+
+## Active Issue Priorities
+
+When working on this codebase, prioritize:
+
+1. **Critical:** Remove `as any` casts, fix email verification, improve error visibility
+2. **High:** Upload security, auth race handling, debouncing, error boundaries
+3. **Medium:** Configurable assets, pagination, accessibility, optimistic updates
+
+## Reference Documentation
+
+- **Pipeline details:** `docs/skills/letter-generation-pipeline/SKILL.md`
+- **Review workflow:** `docs/skills/letter-review-pipeline/SKILL.md`
+- **Architecture:** `ARCHITECTURE.md`
+- **Spec compliance:** `SPEC_COMPLIANCE.md`
 
 ---
 
 ## Project TODO Tracker
 
 > **Last Updated:** 2026-03-04
-> **Purpose:** Shared TODO list across all coding agents (Claude, GitHub Copilot, Codex, etc.)
+> **Purpose:** Shared TODO list across all coding agents (GitHub Copilot, Claude, Codex, etc.)
 > **Usage:** Mark items as `[x]` when completed. All agents should continue from the last completed item.
 
 ### Phase 1: Foundation
@@ -362,23 +555,3 @@ export default ComponentName
 ---
 
 **Note:** This TODO list is synchronized across all documentation files. When completing items, update this section in all files to maintain consistency.
-
-## Testing Patterns
-
-- Tests are organized by development phases: `phase*.test.ts`
-- Comprehensive test coverage expected for each phase
-- Test results documented in commit messages (XXX/XXX tests passing)
-- TypeScript compilation must pass (0 errors) before commits
-- Tests cover tRPC procedures, database operations, and email functionality
-
-## Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/complete-phase` | Complete a development phase with comprehensive testing and checkpoint commit |
-| `/add-db-column` | Add new database schema with proper Drizzle migration |
-| `/add-email-template` | Integrate new branded email notifications with fire-and-forget sending |
-| `/update-frontend-pages` | Update multiple frontend pages with role-based considerations |
-| `/update-stripe-integration` | Modify payment flows and webhook handling |
-| `/update-docs` | Create or update project documentation |
-| `/add-trpc-procedure` | Add new API endpoints with validation and testing |
