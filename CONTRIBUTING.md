@@ -16,8 +16,8 @@ This guide explains how to contribute to the codebase, including code style, tes
 
 ```bash
 # Clone the repository
-gh repo clone jamilahmedansari/manus-talk-to-my-lawyer
-cd manus-talk-to-my-lawyer
+gh repo clone jamilahmedansari/www.talk-to-my-lawyer.com-
+cd www.talk-to-my-lawyer.com-
 
 # Install dependencies
 pnpm install
