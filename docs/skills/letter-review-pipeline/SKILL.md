@@ -7,7 +7,7 @@ description: Complete reference for the Talk to My Lawyer attorney review pipeli
 
 The letter review pipeline handles everything that happens after the AI generates a letter draft and the subscriber pays to unlock it. It covers the attorney review workflow, inline editing, approval/rejection decisions, PDF generation, and all associated notifications.
 
-> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/####_description.sql` naming convention.
 
 ## Review Pipeline Overview
 

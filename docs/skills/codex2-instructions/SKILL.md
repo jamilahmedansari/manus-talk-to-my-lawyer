@@ -9,7 +9,7 @@ description: Comprehensive AI assistant instructions for Talk to My Lawyer platf
 > **Stack:** React 19 + Vite + TypeScript + tRPC + Drizzle ORM + Supabase + Stripe
 > **Architecture:** Full-stack monorepo with shared types
 
-> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/####_description.sql` naming convention.
 
 ## Quick Context Summary
 
