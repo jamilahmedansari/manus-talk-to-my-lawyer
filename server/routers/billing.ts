@@ -29,7 +29,6 @@ import {
   createAttorneyReviewCheckout,
   createBillingPortalSession,
   createCheckoutSession,
-  createAttorneyReviewCheckout,
   createLetterUnlockCheckout,
   getOrCreateStripeCustomer,
   getStripe,

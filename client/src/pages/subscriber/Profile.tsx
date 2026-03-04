@@ -32,7 +32,6 @@ import {
   BarChart2,
   Scale,
   Briefcase,
-  Copy,
   ExternalLink,
   Settings,
 } from "lucide-react";

@@ -366,7 +366,6 @@ export default function LetterDetail() {
             letterId={letterId}
             letterType={letter.letterType}
             subject={letter.subject}
-            draftContent={aiDraftVersion?.content ?? undefined}
           />
         )}
 

@@ -492,7 +492,7 @@ export async function createLetterUnlockCheckout(params: {
  * On payment success the webhook transitions:
  *   generated_unlocked → pending_review  (unlock_type = "attorney_review_upsell")
  */
-export async function export async function export async function createAttorneyReviewCheckout(params: {
+export async function createAttorneyReviewCheckout(params: {
   userId: number;
   email: string;
   name: string | null;
@@ -501,6 +501,7 @@ export async function export async function export async function createAttorney
 }): Promise<{ url: string; sessionId: string }> {
   const { userId, email, name, letterId, origin } = params;
 
+  const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     mode: "payment",

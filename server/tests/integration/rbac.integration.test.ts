@@ -65,6 +65,6 @@ describe("Auth/RBAC integration", () => {
   it("rejects admin stats access for non-admin users", async () => {
     const caller = createCaller(roleFixtures.employee);
 
-    await expectTrpcError(() => caller.admin.stats(), "FORBIDDEN", NOT_ADMIN_ERR_MSG);
+    await expectTrpcError(() => caller.admin.stats(), "FORBIDDEN", "Admin access required");
   });
 });

@@ -95,11 +95,18 @@ export function validateResearchPacket(data: unknown): { valid: boolean; errors:
   else {
     if (p.applicableRules.length === 0)
       errors.push("applicableRules must be a non-empty array");
+    if (p.applicableRules.length > 0 && p.applicableRules.length < 3)
+      warnings.push(`applicableRules contains only ${p.applicableRules.length} rule(s) — prefer at least 3 for comprehensive legal research`);
     (p.applicableRules as unknown[]).forEach((rule, i) => {
       if (!rule || typeof rule !== "object") { errors.push(`applicableRules[${i}] is not an object`); return; }
       const r = rule as Record<string, unknown>;
       if (!r.ruleTitle) errors.push(`applicableRules[${i}].ruleTitle is required`);
       if (!r.summary) errors.push(`applicableRules[${i}].summary is required`);
+      // CRITICAL: Require sourceUrl and sourceTitle for citation and verification
+      if (!r.sourceUrl || typeof r.sourceUrl !== "string" || r.sourceUrl.trim().length === 0)
+        errors.push(`applicableRules[${i}].sourceUrl is required (must be a valid URL)`);
+      if (!r.sourceTitle || typeof r.sourceTitle !== "string" || r.sourceTitle.trim().length === 0)
+        errors.push(`applicableRules[${i}].sourceTitle is required (must be a descriptive title)`);
     });
   }
   if (!Array.isArray(p.draftingConstraints)) errors.push("draftingConstraints must be an array");
