@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { InsertUser } from "../drizzle/schema";
@@ -72,14 +72,14 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("[Database] Cannot look up user: database not available");
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result[0];
 }
 
 export async function getUserById(id: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("[Database] Cannot get user: database not available");
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result[0];
 }
@@ -151,14 +151,14 @@ export async function createLetterRequest(data: {
 
 export async function getLetterRequestById(id: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("[Database] Cannot get letter request: database not available");
   const result = await db.select().from(letterRequests).where(eq(letterRequests.id, id)).limit(1);
   return result[0];
 }
 
 export async function getLetterRequestsByUserId(userId: number) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new Error("[Database] Cannot list letters: database not available");
   return db.select().from(letterRequests).where(
     and(eq(letterRequests.userId, userId), isNull(letterRequests.archivedAt))
   ).orderBy(desc(letterRequests.createdAt));
@@ -167,7 +167,7 @@ export async function getLetterRequestsByUserId(userId: number) {
 /** Subscriber-safe: never returns AI draft, attorney edits, or internal research data */
 export async function getLetterRequestSafeForSubscriber(id: number, userId: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("[Database] Cannot get letter detail: database not available");
   const result = await db.select({
     id: letterRequests.id,
     letterType: letterRequests.letterType,
@@ -194,7 +194,7 @@ export async function getAllLetterRequests(filters?: {
   unassigned?: boolean;
 }) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new Error("[Database] Cannot list letter requests: database not available");
   const conditions = [];
   if (filters?.status) conditions.push(eq(letterRequests.status, filters.status as any));
   if (filters?.unassigned) conditions.push(isNull(letterRequests.assignedReviewerId));
@@ -347,7 +347,7 @@ export async function createLetterVersion(data: {
 
 export async function getLetterVersionsByRequestId(letterRequestId: number, includeInternal = false) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new Error("[Database] Cannot get letter versions: database not available");
   if (includeInternal) {
     return db.select().from(letterVersions).where(eq(letterVersions.letterRequestId, letterRequestId)).orderBy(desc(letterVersions.createdAt));
   }
@@ -399,7 +399,7 @@ export async function logReviewAction(data: {
 
 export async function getReviewActions(letterRequestId: number, includeInternal = false) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new Error("[Database] Cannot get review actions: database not available");
   if (includeInternal) {
     return db.select().from(reviewActions).where(eq(reviewActions.letterRequestId, letterRequestId)).orderBy(desc(reviewActions.createdAt));
   }
@@ -977,6 +977,21 @@ export async function deleteUserVerificationTokens(userId: number) {
         isNull(emailVerificationTokens.usedAt)
       )
     );
+}
+
+/** Delete expired verification tokens (used or past expiresAt). */
+export async function deleteExpiredVerificationTokens(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .delete(emailVerificationTokens)
+    .where(
+      or(
+        sql`${emailVerificationTokens.expiresAt} < now()`,
+        isNotNull(emailVerificationTokens.usedAt),
+      )
+    );
+  return (result as unknown as { rowCount?: number }).rowCount ?? 0;
 }
 
 /** Check if a user's email is verified */

@@ -13,6 +13,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { checkTrpcRateLimit } from "../rateLimiter";
 import { protectedProcedure, router } from "../_core/trpc";
+import { captureServerException } from "../sentry";
 import { subscriberProcedure, getAppUrl } from "./_guards";
 import {
   getLetterRequestSafeForSubscriber,
@@ -211,6 +212,7 @@ export const billingRouter = router({
         }
       } catch (e) {
         console.error("[freeUnlock] Email error:", e);
+        captureServerException(e instanceof Error ? e : new Error(String(e)));
       }
 
       return { success: true, free: true };
@@ -312,6 +314,7 @@ export const billingRouter = router({
       }));
     } catch (e) {
       console.error("[paymentHistory] Stripe error:", e);
+      captureServerException(e instanceof Error ? e : new Error(String(e)));
       return [];
     }
   }),
@@ -415,6 +418,7 @@ export const billingRouter = router({
       };
     } catch (e) {
       console.error("[receipts] Stripe error:", e);
+      captureServerException(e instanceof Error ? e : new Error(String(e)));
       return { invoices: [] };
     }
   }),
