@@ -21,7 +21,9 @@ import { ENV } from "./_core/env";
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
-  const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  // Prefer DATABASE_URL (pooler, IPv4) over SUPABASE_DATABASE_URL (direct, IPv6)
+  // Railway and many hosting providers only have IPv4 connectivity
+  const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
   if (!_db && dbUrl) {
     try {
       const client = postgres(dbUrl, {

@@ -5,15 +5,23 @@ let initialized = false;
 
 /**
  * Initialize Sentry for server-side error monitoring.
- * Must be called BEFORE any other imports that might throw.
+ * 
+ * NOTE: For ESM, Sentry should be initialized via instrument.ts with --import flag.
+ * This function is kept for backward compatibility but checks if already initialized.
  */
 export function initServerSentry() {
-  if (initialized) return;
+  // Check if already initialized via instrument.ts (ESM --import pattern)
+  if (initialized || Sentry.getClient()) {
+    initialized = true;
+    return;
+  }
+  
   if (!ENV.sentryDsn) {
     console.log("[Sentry] No DSN configured — server-side monitoring disabled");
     return;
   }
 
+  // Fallback initialization (for dev mode without --import)
   Sentry.init({
     dsn: ENV.sentryDsn,
     environment: ENV.isProduction ? "production" : "development",
@@ -50,7 +58,7 @@ export function initServerSentry() {
   });
 
   initialized = true;
-  console.log("[Sentry] Server-side monitoring initialized");
+  console.log("[Sentry] Server-side monitoring initialized (fallback)");
 }
 
 // ─── Helper: Capture exception with context ───
