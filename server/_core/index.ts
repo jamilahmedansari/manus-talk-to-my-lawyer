@@ -9,7 +9,6 @@ import type { RequestHandler } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerSupabaseAuthRoutes } from "../supabaseAuth";
-import { registerChatRoutes } from "./chat";
 import { registerN8nCallbackRoute } from "../n8nCallback";
 import { registerEmailPreviewRoute } from "../emailPreview";
 import { registerDraftRemindersRoute } from "../draftReminders";
@@ -105,10 +104,6 @@ async function startServer() {
   registerSupabaseAuthRoutes(app);
   // Legacy Manus OAuth callback (kept for backward compatibility)
   registerOAuthRoutes(app);
-  // Chat API with streaming and tool calling (only when legacy Forge API is configured)
-  if (process.env.BUILT_IN_FORGE_API_URL) {
-    registerChatRoutes(app);
-  }
   // n8n pipeline callback endpoint
   registerN8nCallbackRoute(app);
   // Dev-only email template preview (disabled in production)
