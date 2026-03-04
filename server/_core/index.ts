@@ -133,7 +133,10 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
+  const preferredPort = parseInt(process.env.PORT || "3000", 10);
+  if (!Number.isFinite(preferredPort)) {
+    throw new Error(`Invalid PORT environment variable: "${process.env.PORT}"`);
+  }
 
   server.listen(preferredPort, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${preferredPort}/`);

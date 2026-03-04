@@ -1,6 +1,6 @@
 # Status Transitions & Workflow Jobs Reference
 
-> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/migrations/000X_description.sql` naming convention.
+> **⚠️ Schema Changes:** All schema changes must be applied via Drizzle migrations. Follow the `drizzle/####_description.sql` naming convention.
 
 ## Table of Contents
 - [Status Enum Values](#status-enum-values)
